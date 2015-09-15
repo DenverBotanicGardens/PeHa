@@ -38,18 +38,31 @@ peha.climate$Year <- substr(ae.climate$Date,1,4)
 peha.climate$Month <- substr(ae.climate$Date,6,7)
 
 head(peha.climate)
-peha.c <- peha.climate[,c(2,4,6:9)]
-names(peha.c) <- c("Precip","Tmax","Tmin","Site","Year","Month")
+peha.c <- peha.climate[,c(1,2,4,6:9)]
+names(peha.c) <- c("Date","Precip","Tmax","Tmin","Site","Year","Month")
+peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
 
-apply(subset(peha.c, select = c(Site,Year)), 1, function(x) mean(x, na.rm = TRUE))
-mapply(mean, peha.c[,1:3])
+table(peha.c$Site, peha.c$Precip)
 
-expand.grid(unique(peha.c$Site),unique(peha.c$Year))
-sapply(expand.grid(unique(peha.c$Site),unique(peha.c$Year)), )
+ggplot(peha.c, aes(Date, Tmin, colour = Site)) +
+  geom_point()
+
+lapply(peha.c[,2:4], function(x) mean(x, na.rm = TRUE))
+avg_peha <- by(peha.c[,5:6], peha.c[,2:4], function(x) mean(x, na.rm = TRUE))
+
+tapply(peha.c[,5:6], peha.c[,2:4], mean)
+peha.precip <- tapply(peha.c[,2], peha.c[,6], function(x) mean(x, na.rm = TRUE))
+peha.tmax <- tapply(peha.c[,3], peha.c[,6], function(x) mean(x, na.rm = TRUE))
+peha.tmin <- tapply(peha.c[,4], peha.c[,6], function(x) mean(x, na.rm = TRUE))
+climate <- data.frame(peha.precip,peha.tmax,peha.tmin, Year = row.names(peha.precip))
+
+#expand.grid(unique(peha.c$Site),unique(peha.c$Year))
+
+
 
 ```
 
-
+The old data gave me different values by site for precipitation 
 
 ```{r}
 peha_sum <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_2015_summary.csv"))
@@ -73,7 +86,25 @@ table(peha$Site, peha$Year)
 
 
 ```{r, echo=FALSE}
-plot(cars)
+ggplot(peha, aes(Year, X.ofRosettes)) +
+  geom_bar(stat='identity') +
+  facet_grid(~Site)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+```{r, echo=FALSE}
+ggplot(peha, aes(Year, X.ofRosettes)) +
+  stat_summary(fun.y = sum, geom="line") +
+  facet_wrap(~Site)
+```
+
+
+
+```{r, echo=FALSE}
+ggplot(peha, aes(Year, X.ofRosettes, colour = Site)) +
+  stat_summary(fun.y = sum, geom="line") +
+  ylab("Total Rosettes")
+```
+
+
