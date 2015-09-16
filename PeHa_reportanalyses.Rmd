@@ -231,16 +231,40 @@ ggplot(subset(peha_cprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
 
 
 Seaonal climate means     
-fall- July:Sept    
-winter- Oct:Dec    
-spring- Jan:March    
-summer- April:June   
+fall- July:Sept (7-9)     
+winter- Oct:Dec (10-12)    
+spring- Jan:March (1-3)    
+summer- April:June (4-6)     
 ```{r}
+peha.c$season <- "fall" 
+peha.c[peha.c$Month>9 & peha.c$Month<13,"season"] <- "winter" 
+peha.c[peha.c$Month>0 & peha.c$Month<4,"season"] <- "spring" 
+peha.c[peha.c$Month>3 & peha.c$Month<7,"season"] <- "summer" 
+
+peha.c.summary <- aggregate(peha.c[,2:4], peha.c[,c("Site","Prev12","season")], 
+                            FUN = function(x) mean(x, na.rm = TRUE))
 
 ```
 
 
 Merge summary data with precipition data
 ```{r}
+peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","Prev12"))
+```
+
+
+Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
+
+Need to fix CountPVA to spit out one data.frame and necessitate assigning it to something
+
+```{r}
+load(path.expand("Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R"))
+
+peha_count <- aggregate(list(TotRos = peha$X.ofRosettes), 
+                      by=list(Site=peha$Site, Year=peha$Year), 
+                      FUN = sum)
+
+CountPVA(peha_count[peha_count$Site=="Dry Lake","Year"],
+         peha_count[peha_count$Site=="Dry Lake","TotRos"])
 
 ```
