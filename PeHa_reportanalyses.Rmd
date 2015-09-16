@@ -12,13 +12,18 @@ library(reshape)
 
 ctrl+Alt+c will run a chunck of code
 
-gather climate data from WWDT and/or <http://www.prism.oregonstate.edu/explorer/>
-First 6 lines of code are metadata
+gather climate data from WWDT and/or <http://www.prism.oregonstate.edu/explorer/>  
+Make sure to set the resolution to 800m and the Units to SI (metric)!!    
+First 6 lines of code are metadata     
 first column is YYYY-MM and then data in metric
 
+        Latitude/Longitude      Y           X           Site
+        39.6917°N, 106.9598°W   4395377.218	331953.342	Dry Lake
+        39.6547°N, 106.7843°W   4390957.204	346919.7342	Above Eagle
+
+#### Climate data
 ```{r}
 ae_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_precip_2015.csv"), skip=6)
-head(ae_p)
 dl_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_precip_2015.csv"), skip=6)
 ae_tmax <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_tmax_2015.csv"), skip=6)
 dl_tmax <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_maxtemp_2015.csv"), skip=6)
@@ -26,11 +31,9 @@ ae_tmin <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon S
 dl_tmin <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_tmin_2015.csv"), skip=6)
 
 ae.climate <- data.frame(ae_p,ae_tmax,ae_tmin)
-head(ae.climate)
 ae.climate$Site <- "Above Eagle"
 
 dl.climate <- data.frame(dl_p,dl_tmax,dl_tmin)
-head(dl.climate)
 dl.climate$Site <- "Dry Lake"
 
 peha.climate <- rbind(ae.climate,dl.climate)
@@ -47,29 +50,14 @@ table(peha.c$Site, peha.c$Precip)
 ggplot(peha.c, aes(Date, Tmin, colour = Site)) +
   geom_point()
 
-lapply(peha.c[,2:4], function(x) mean(x, na.rm = TRUE))
-avg_peha <- by(peha.c[,5:6], peha.c[,2:4], function(x) mean(x, na.rm = TRUE))
-
-tapply(peha.c[,5:6], peha.c[,2:4], mean)
-peha.precip <- tapply(peha.c[,2], peha.c[,6], function(x) mean(x, na.rm = TRUE))
-peha.tmax <- tapply(peha.c[,3], peha.c[,6], function(x) mean(x, na.rm = TRUE))
-peha.tmin <- tapply(peha.c[,4], peha.c[,6], function(x) mean(x, na.rm = TRUE))
-climate <- data.frame(peha.precip,peha.tmax,peha.tmin, Year = row.names(peha.precip))
-
-#expand.grid(unique(peha.c$Site),unique(peha.c$Year))
-
-
-
 ```
 
 The old data gave me different values by site for precipitation 
 
 ```{r}
-peha_sum <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_2015_summary.csv"))
+peha_summary <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_2015_summary.csv"))
 
-head(peha_sum)
-tail(peha_sum)
-ggplot(peha_sum, aes(Year,Jan)) +
+ggplot(peha_summary, aes(Year,Jan)) +
   geom_line() +
   facet_wrap(~Site)
 ```
@@ -80,7 +68,6 @@ ggplot(peha_sum, aes(Year,Jan)) +
 peha <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha2015.csv"))
 
 head(peha)
-table(peha$Site, peha$Year)
 ```
 
 
@@ -100,7 +87,6 @@ ggplot(peha, aes(Year, X.ofRosettes)) +
 ```
 
 
-
 ```{r, echo=FALSE}
 ggplot(peha, aes(Year, X.ofRosettes, colour = Site)) +
   stat_summary(fun.y = sum, geom="line") +
@@ -108,3 +94,153 @@ ggplot(peha, aes(Year, X.ofRosettes, colour = Site)) +
 ```
 
 
+##### Summary data    
+We want precipitation as the previous 12 months (July-June)
+```{r}
+peha_sum <- aggregate(list(TotRos = peha$X.ofRosettes), 
+                      by=list(Site=peha$Site, Year=peha$Year, Transect=peha$Transect), 
+                      FUN = sum)
+
+peha_fl.herb <- aggregate(peha[,c(7,9)], 
+                     by=list(Site=peha$Site, Year=peha$Year, Transect=peha$Transect),
+                     FUN = function(x) sum(x)/length(x))
+
+#Label Prev12 as 07 through 12 of the previous year and give it the year for 01-06 (of the previous year (the next year) 
+peha.c$Month <- as.numeric(peha.c$Month)
+peha.c$Year <- as.numeric(peha.c$Year)
+peha.c$Prev12 <- peha.c$Year
+peha.c[peha.c$Month > 6,8] <- peha.c[peha.c$Month > 6,6]+1
+
+
+peha_c <- aggregate(peha.c[,2:4], peha.c[,c(5,8)], FUN = mean)
+peha_cprecip <- aggregate(peha.c$Precip, peha.c[,c(5,8)], FUN = sum)
+
+peha_m <- merge(peha_sum, peha_fl.herb, by = c("Site","Year","Transect"))
+peha_all <- merge(peha_m, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
+```
+
+
+summarySE function borrowed from <http://www.cookbook-r.com/Manipulating_data/Summarizing_data/>
+```{r}
+summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
+                      conf.interval=.95, .drop=TRUE) {
+    library(plyr)
+
+    # New version of length which can handle NA's: if na.rm==T, don't count them
+    length2 <- function (x, na.rm=FALSE) {
+        if (na.rm) sum(!is.na(x))
+        else       length(x)
+    }
+
+    # This does the summary. For each group's data frame, return a vector with
+    # N, mean, and sd
+    datac <- ddply(data, groupvars, .drop=.drop,
+      .fun = function(xx, col) {
+        c(N    = length2(xx[[col]], na.rm=na.rm),
+          mean = mean   (xx[[col]], na.rm=na.rm),
+          sd   = sd     (xx[[col]], na.rm=na.rm)
+        )
+      },
+      measurevar
+    )
+
+    # Rename the "mean" column    
+    datac <- rename(datac, c("mean" = measurevar))
+
+    datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
+
+    # Confidence interval multiplier for standard error
+    # Calculate t-statistic for confidence interval: 
+    # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
+    ciMult <- qt(conf.interval/2 + .5, datac$N-1)
+    datac$ci <- datac$se * ciMult
+
+    return(datac)
+}
+```
+
+
+Add summary statistics to the peha table
+```{r}
+peha_sumSE <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site","Year"))
+peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
+peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
+peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
+```
+
+
+
+Figure 1a) average rosettes per transect
+```{r}
+ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
+  geom_point(position=position_dodge(0.1), shape=21, fill="white") +
+  stat_summary(fun.y = mean, geom="line") +
+  geom_errorbar(aes(ymin=TotRos-se, ymax=TotRos+se),width=1, position = position_dodge(0.1)) +
+  theme_bw() +
+  ylab("Average rosettes per transect") +
+  theme(legend.justification=c(1,1), legend.position=c(1,1))
+```
+
+
+Figure 1b) percent of indivdiuals that are flowering or fruiting
+```{r}
+ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
+  geom_point(position=position_dodge(0.1), shape=21, fill="white") +
+  stat_summary(fun.y = mean, geom="line") +
+  geom_errorbar(aes(ymin=Fl-se, ymax=Fl+se),width=1, position = position_dodge(0.1)) +
+  theme_bw() +
+  ylab("% of reproductive individuals") +
+  theme(legend.justification=c(1,1), legend.position=c(1,1))
+```
+
+
+Figure 1c) percent of indivdiuals with herbivory
+```{r}
+ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
+  geom_point(position=position_dodge(0.1), shape=21, fill="white") +
+  stat_summary(fun.y = mean, geom="line") +
+  geom_errorbar(aes(ymin=Br-se, ymax=Br+se),width=1, position = position_dodge(0.1)) +
+  theme_bw() +
+  ylab("% of individuals with herbivory") +
+  theme(legend.justification=c(1,0), legend.position=c(1,0))
+```
+
+
+Average precipitation by month
+```{r}
+ggplot(peha_sumSEprecip, aes(Prev12, Precip, colour=Site)) +
+  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
+  stat_summary(fun.y = mean, geom="line") +
+  geom_errorbar(aes(ymin=Precip-se, ymax=Precip+se),width=1, position = position_dodge(0.2)) +
+  theme_bw() +
+  ylab("Average monthly precipition (cm)") +
+  theme(legend.justification=c(0,1), legend.position=c(0,1))
+```
+
+
+Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
+```{r}
+ggplot(subset(peha_cprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
+  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
+  stat_summary(fun.y = mean, geom="line") +
+  theme_bw() +
+  ylab("Total 12 month precipition (mm)") +
+  theme(legend.justification=c(0,0), legend.position=c(0,0))
+
+```
+
+
+Seaonal climate means     
+fall- July:Sept    
+winter- Oct:Dec    
+spring- Jan:March    
+summer- April:June   
+```{r}
+
+```
+
+
+Merge summary data with precipition data
+```{r}
+
+```
