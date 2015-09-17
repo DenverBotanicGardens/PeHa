@@ -38,8 +38,8 @@ CountPVA <- function(x,y){
 	PVA.lm <- list()	
 	mu_sp <- c()
 	year.int <- c()
-
-  
+  Year1<-c()
+  Year2<-c()
   
 	for(j in 4:Yrs){		# gives 3 transitions before the first Count PVA calculation
 		count1 <- x[1:j]
@@ -49,44 +49,28 @@ CountPVA <- function(x,y){
         yr.yr <- data.frame(Year1=x[i],Year2=x[i+1])
 				xvar <- c(xvar, yr)         #create a vector of sqrt number of year transitions
 				y1 <- ( log10(y[i+1]/y[i]) )/yr   #finds the log proportion of the next to current year's count divided by the sqrt transition
-				ySpecies <- c(ySpecies, y1) #create a vector of log change
-        
-        #mean(ySpecies) #geometric
-        #growth rates with replacement
-        #lambda <- (y[-1]/y[-length(y)])
-        #st.pro <- stoch.projection(as.list(lambda), y[1], nreps = 1000, tmax = 10)
-        
-        hist(st.pro, xlim=c(0,10000), breaks=10000)
-        
-        predict(glm(ySpecies ~ xvar -1))
-        
+				ySpecies <- c(ySpecies, y1) #create a vector of log change        
 				PVA.lm <- lm(ySpecies ~ -1 + xvar)
 				mu_sp1 <- predict(PVA.lm, level= 0.95,
                           interval = "confidence",
                           se.fit = T)$fit[1,]
-				PVA.table <-data.frame(xvar,ySpecies,Year1=x[i],Year2=x[i+1])  #first element of list
+        Year1 <- c(Year1,x[i])
+				Year2 <- c(Year2,x[i+1])
+        
 			}
+				PVA.table <-data.frame(xvar,ySpecies,Year1,Year2)  #first element of list, doubles the data
+			
     
-    ## ,RangeStart=min(x),RangeEnd=x[j]
+    ## ,
     
     rsq <- c(rsq, R2 = summary(PVA.lm)$adj.r.squared)	# pull R squared values from each year interval 
-    ### Combind this to one!!! # Sitemu <<- ySpecies     
+    LM.table <- rbind(LM.table,data.frame(rsq,RangeStart=min(x),RangeEnd=x[j],t(mu_sp1)))    
 		rm(ySpecies); rm(xvar); rm(PVA.table)
 		ySpecies <- c(); xvar <- c(); PVA.table <- list()
-	
-		mu_sp <- data.frame(rbind(mu_sp, mu_sp1$fit[1,]))
-		year.int <- data.frame(rbind(year.int, year.int1))
+    #mu_sp <- rbind(mu_sp, mu_sp1)
 	}
 
-	R.sq <<- rsq
-	colnames(R.sq) <<- "R.squared"
-	mu.s <<- mu_sp
-	colnames(mu.s) <<- c("fit", "lwr", "upr")
-	growth <<- mu_sp
-	# years <<- year.int   This is now part of main table - REMOVE!!!
-	growth.exp <<- exp(growth)
-	lambda <<- data.frame(cbind((min(years[,2])-3):(max(years[,2])-1),Sitemu))
-	
+  list(PVA.table,LM.table)
 }
 
 save(CountPVA, file = "CountPVAFunction.R")
@@ -98,7 +82,15 @@ save(CountPVA, file = "CountPVAFunction.R")
 
 
 
-
+#R.sq <<- rsq
+#colnames(R.sq) <<- "R.squared"
+#mu.s <<- mu_sp
+#colnames(mu.s) <<- c("fit", "lwr", "upr")
+#growth <<- mu_sp
+# years <<- year.int   This is now part of main table - REMOVE!!!
+#growth.exp <<- exp(growth)
+#lambda <<- data.frame(cbind((min(years[,2])-3):(max(years[,2])-1),Sitemu))
+#year.int <- data.frame(rbind(year.int, year.int1))
 
 
 
