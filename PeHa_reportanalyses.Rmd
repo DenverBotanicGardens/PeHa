@@ -7,7 +7,8 @@ output: html_document
 ```{r}
 library(ggplot2)
 library(reshape2)
-library(reshape)
+#library(reshape)
+library(grid)
 ```
 
 ctrl+Alt+c will run a chunck of code
@@ -44,22 +45,11 @@ head(peha.climate)
 peha.c <- peha.climate[,c(1,2,4,6:9)]
 names(peha.c) <- c("Date","Precip","Tmax","Tmin","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
-
-table(peha.c$Site, peha.c$Precip)
-
-ggplot(peha.c, aes(Date, Tmin, colour = Site)) +
-  geom_point()
-
 ```
 
-The old data gave me different values by site for precipitation 
 
 ```{r}
 peha_summary <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_2015_summary.csv"))
-
-ggplot(peha_summary, aes(Year,Jan)) +
-  geom_line() +
-  facet_wrap(~Site)
 ```
 
 
@@ -168,7 +158,7 @@ peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
 peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
 ```
 
-
+Add "a)" to each plot     
 
 Figure 1a) average rosettes per transect
 ```{r}
@@ -178,7 +168,9 @@ ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
   geom_errorbar(aes(ymin=TotRos-se, ymax=TotRos+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("Average rosettes per transect") +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))
+  theme(legend.justification=c(1,1), legend.position=c(1,1)) +
+  ggtitle("a)") +
+  theme(plot.title=element_text(hjust=0))
 ```
 
 
@@ -190,7 +182,9 @@ ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   geom_errorbar(aes(ymin=Fl-se, ymax=Fl+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of reproductive individuals") +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))
+  theme(legend.justification=c(1,1), legend.position=c(1,1))+
+  ggtitle("b)") +
+  theme(plot.title=element_text(hjust=0))
 ```
 
 
@@ -202,7 +196,9 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
   geom_errorbar(aes(ymin=Br-se, ymax=Br+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of individuals with herbivory") +
-  theme(legend.justification=c(1,0), legend.position=c(1,0))
+  theme(legend.justification=c(1,0), legend.position=c(1,0)) +
+  ggtitle("c)") +
+  theme(plot.title=element_text(hjust=0))
 ```
 
 
@@ -225,7 +221,9 @@ ggplot(subset(peha_cprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
   stat_summary(fun.y = mean, geom="line") +
   theme_bw() +
   ylab("Total 12 month precipition (mm)") +
-  theme(legend.justification=c(0,0), legend.position=c(0,0))
+  theme(legend.justification=c(0,0), legend.position=c(0,0))  +
+  ggtitle("d)") +
+  theme(plot.title=element_text(hjust=0))
 
 ```
 
