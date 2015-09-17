@@ -31,15 +31,9 @@ i<-1
 CountPVA <- function(x,y){
   library(popbio) #should use popbio
 
-	Yrs <- length(unique(x))
-	rsq <- c()
-	xvar <- c()
-	ySpecies <- c()
-	PVA.lm <- list()	
-	mu_sp <- c()
-	year.int <- c()
-  Year1<-c()
-  Year2<-c()
+	Yrs <- length(unique(x));	rsq <- c();	xvar <- c();	ySpecies <- c()
+	PVA.lm <- list(); mu_sp <- c(); year.int <- c()
+  Year1<-c(); Year2<-c()
   
 	for(j in 4:Yrs){		# gives 3 transitions before the first Count PVA calculation
 		count1 <- x[1:j]
@@ -56,13 +50,8 @@ CountPVA <- function(x,y){
                           se.fit = T)$fit[1,]
         Year1 <- c(Year1,x[i])
 				Year2 <- c(Year2,x[i+1])
-        
 			}
-				PVA.table <-data.frame(xvar,ySpecies,Year1,Year2)  #first element of list, doubles the data
-			
-    
-    ## ,
-    
+    PVA.table <-data.frame(xvar,ySpecies,Year1,Year2)  #first element of list, doubles the data
     rsq <- c(rsq, R2 = summary(PVA.lm)$adj.r.squared)	# pull R squared values from each year interval 
     LM.table <- rbind(LM.table,data.frame(rsq,RangeStart=min(x),RangeEnd=x[j],t(mu_sp1)))    
 		rm(ySpecies); rm(xvar); rm(PVA.table)
@@ -92,7 +81,8 @@ save(CountPVA, file = "CountPVAFunction.R")
 #lambda <<- data.frame(cbind((min(years[,2])-3):(max(years[,2])-1),Sitemu))
 #year.int <- data.frame(rbind(year.int, year.int1))
 
-
+#Adding a copy each year. Need to get to one transition, no wait...?? 
+table(LM.table$RangeEnd, LM.table$RangeStart)
 
 ###############################EXAMPLE##########################################
 
