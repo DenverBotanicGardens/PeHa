@@ -253,7 +253,8 @@ peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","
 
 Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
 
-Need to fix CountPVA to spit out one data.frame and necessitate assigning it to something
+Need to fix CountPVA to spit out one data.frame and necessitate assigning it to something   
+<http://www.montana.edu/screel/Webpages/conservation%20biology/BIOL%20521%20count%20based%20PVA%20grizzly%20data.R>    
 
 ```{r}
 load(path.expand("Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R"))

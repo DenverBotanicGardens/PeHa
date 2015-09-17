@@ -29,6 +29,7 @@ i<-1
 ####
 
 CountPVA <- function(x,y){
+  library(popbio) #should use popbio
 
 	Yrs <- length(unique(x))
 	rsq <- c()
@@ -38,27 +39,38 @@ CountPVA <- function(x,y){
 	mu_sp <- c()
 	year.int <- c()
 
+  
+  
 	for(j in 4:Yrs){		# gives 3 transitions before the first Count PVA calculation
 		count1 <- x[1:j]
 		yrs <- length(count1)
 			for(i in 1:(yrs-1)){
 				yr <- sqrt((x[i+1]) - (x[i]))   #the sqrt of the difference in years
+        yr.yr <- data.frame(Year1=x[i],Year2=x[i+1])
 				xvar <- c(xvar, yr)         #create a vector of sqrt number of year transitions
 				y1 <- ( log10(y[i+1]/y[i]) )/yr   #finds the log proportion of the next to current year's count divided by the sqrt transition
 				ySpecies <- c(ySpecies, y1) #create a vector of log change
-				PVA.table <- data.frame(cbind(xvar = as.numeric(xvar),
-					ySpecies = as.numeric(ySpecies)))
-				year.int1 <- data.frame(cbind(RangeStart = min(x), 
-					RangeEnd = x[j]))
-				PVA.lm <- lm(PVA.table[,2] ~ -1 + PVA.table[,1])
-
-				mu_sp1 <- predict(PVA.lm, level= 0.95, 
-					interval = "confidence",
-					se.fit = T)
+        
+        #mean(ySpecies) #geometric
+        #growth rates with replacement
+        #lambda <- (y[-1]/y[-length(y)])
+        #st.pro <- stoch.projection(as.list(lambda), y[1], nreps = 1000, tmax = 10)
+        
+        hist(st.pro, xlim=c(0,10000), breaks=10000)
+        
+        predict(glm(ySpecies ~ xvar -1))
+        
+				PVA.lm <- lm(ySpecies ~ -1 + xvar)
+				mu_sp1 <- predict(PVA.lm, level= 0.95,
+                          interval = "confidence",
+                          se.fit = T)$fit[1,]
+				PVA.table <-data.frame(xvar,ySpecies,Year1=x[i],Year2=x[i+1])  #first element of list
 			}
-	rsq <- data.frame(rbind(rsq, summary(PVA.lm)$adj.r.squared))	# pull R squared values from
-												# each year interval 1995-1999...
-	Sitemu <<- ySpecies
+    
+    ## ,RangeStart=min(x),RangeEnd=x[j]
+    
+    rsq <- c(rsq, R2 = summary(PVA.lm)$adj.r.squared)	# pull R squared values from each year interval 
+    ### Combind this to one!!! # Sitemu <<- ySpecies     
 		rm(ySpecies); rm(xvar); rm(PVA.table)
 		ySpecies <- c(); xvar <- c(); PVA.table <- list()
 	
@@ -71,7 +83,7 @@ CountPVA <- function(x,y){
 	mu.s <<- mu_sp
 	colnames(mu.s) <<- c("fit", "lwr", "upr")
 	growth <<- mu_sp
-	years <<- year.int
+	# years <<- year.int   This is now part of main table - REMOVE!!!
 	growth.exp <<- exp(growth)
 	lambda <<- data.frame(cbind((min(years[,2])-3):(max(years[,2])-1),Sitemu))
 	
