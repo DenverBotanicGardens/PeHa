@@ -7,7 +7,6 @@ output: html_document
 ```{r}
 library(ggplot2)
 library(reshape2)
-#library(reshape)
 library(grid)
 ```
 
@@ -251,11 +250,11 @@ peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","
 ```
 
 
-Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
 
 Need to fix CountPVA to spit out one data.frame and necessitate assigning it to something   
 <http://www.montana.edu/screel/Webpages/conservation%20biology/BIOL%20521%20count%20based%20PVA%20grizzly%20data.R>    
 
+CountPVA produces a list of two data frames, PVA and LM. PVA has the annual log growth rates and LM has the results of the linear model from Morris and Doak Population Viability Analysis
 ```{r}
 load(path.expand("Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R"))
 ```
@@ -271,3 +270,131 @@ DL.list <- CountPVA(peha_count[peha_count$Site=="Dry Lake","Year"],
 AE.list <- CountPVA(peha_count[peha_count$Site=="Above Eagle","Year"],
          peha_count[peha_count$Site=="Above Eagle","TotRos"])
 ```
+
+
+Using these count estimates, the population growth rate (λ) at Above Eagle is 0.99 (95% CI: 0.94-1.04) and at Dry Lake is 0.99 (95% CI: 0.84-1.18).     
+```{r}
+
+```
+
+Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
+```{r}
+ggplot(AE.list[["LM"]], aes(RangeEnd,exp(fit))) +
+  geom_point() +
+  stat_smooth() +
+  xlab("Data calculated 1996 - Year") +
+  ylab("Estimated growth rate") +
+  theme_bw() +
+  theme(legend.position="none") +
+  geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
+  geom_line(aes(RangeEnd,exp(upr),colour = "red")) +
+  ggtitle("Above Eagle")
+
+ggplot(DL.list[["LM"]], aes(RangeEnd,exp(fit))) +
+  geom_point() +
+  stat_smooth() +
+  xlab("Data calculated 1996 - Year") +
+  ylab("Estimated growth rate") +
+  theme_bw() +
+  theme(legend.position="none") +
+  geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
+  geom_line(aes(RangeEnd,exp(upr),colour = "red"))+
+  ggtitle("Dry Lake")
+
+```
+
+
+Need the total precipitation for the previous 12 months (July-June) merged to peha_all. x is sum of precip last 12 months
+```{r}
+peha_all_sum <- merge(peha_all, peha_cprecip, by.y = c("Site","Prev12"), by.x = c("Site","Year"))
+```
+
+Figure 3. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
+```{r}
+ggplot(peha_all_sum, aes(x, TotRos, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab(expression(paste("Average rosettes per 60m"^2))) +
+  theme(legend.justification=c(0,1), legend.position=c(0,1))
+```
+
+```{r}
+ggplot(peha_all_sum, aes(x, Fl, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab("% reproductive individuals") +
+  theme(legend.justification=c(0,1), legend.position=c(0,1))
+```
+
+```{r}
+ggplot(peha_all_sum, aes(x, Br, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("Annual precipitation (mm)") +
+  ylab("% of individuals with herbivory") +
+  theme(legend.justification=c(0,0), legend.position=c(0,0))
+```
+ 
+ 
+"To adhere to the sum-to-zero convention for effect weights" suggests running the following code before running anovas in R   
+Sure seems to be missing something..
+```{r}
+#options(contrasts(c("contr.sum","contr.poly")))
+```
+
+<https://gribblelab.wordpress.com/2009/03/09/repeated-measures-anova-using-r/>      
+ANOVA for by factors Site and Year:     
+rosettes per transect log transformed     
+% reproductive (arcsin squareroot transformed)       
+% herbivory (arcsin squareroot transformed)
+```{r}
+par(mfrow = c(1,2))
+hist(peha_all_sum$TotRos)
+hist(log(peha_all_sum$TotRos+1))
+
+hist(peha_all_sum$Fl)
+hist(asin(sqrt(peha_all_sum$Fl)))
+
+hist(peha_all_sum$Br)
+hist(asin(sqrt(peha_all_sum$Br)
+
+peha.aov.ros <- aov(log(TotRos+1)~Year*Site + 
+                      Error(Transect/(Year*Site)), 
+                    data = peha_all_sum)
+summary(peha.aov.ros)
+
+# add a subject unique identifier row
+peha_all_sum$subject <- paste(substr(peha_all_sum$Site,1,1),
+                              substr(peha_all_sum$Year,3,4),
+                              peha_all_sum$Transect, sep=".")
+
+peha.aov.ros1 <- aov(log(TotRos+1)~Year*Site + Error(subject), data=peha_all_sum) 
+summary(peha.aov.ros1) 
+
+#rows are subjects and columns are levels of repeated measures factor - site and year
+site.year <- apply(expand.grid(unique(peha_all_sum$Site),unique(peha_all_sum$Year)),1,
+      function(x) paste(x[1],x[2],sep="."))
+
+#peha.aov.ros2 <- Anova(peha_all_sum, idata = )
+
+#library(ez)
+
+
+#ezANOVA(data = peha_all_sum, wid=.(Site), dv = .(TotRos),
+#        within = .(Year,Site), between = .(Year), observed = .(Year))
+
+peha.aov.fl <-aov(asin(sqrt(PerRepro/100))~Year*Site + Error(Plot), data=peha) 
+summary(PeHa.aov) 
+```
+
+
+
+
