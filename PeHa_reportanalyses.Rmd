@@ -258,12 +258,16 @@ Need to fix CountPVA to spit out one data.frame and necessitate assigning it to 
 
 ```{r}
 load(path.expand("Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R"))
+```
 
+```{r}
 peha_count <- aggregate(list(TotRos = peha$X.ofRosettes), 
                       by=list(Site=peha$Site, Year=peha$Year), 
                       FUN = sum)
 
-CountPVA(peha_count[peha_count$Site=="Dry Lake","Year"],
+DL.list <- CountPVA(peha_count[peha_count$Site=="Dry Lake","Year"],
          peha_count[peha_count$Site=="Dry Lake","TotRos"])
 
+AE.list <- CountPVA(peha_count[peha_count$Site=="Above Eagle","Year"],
+         peha_count[peha_count$Site=="Above Eagle","TotRos"])
 ```

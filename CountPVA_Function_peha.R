@@ -21,114 +21,43 @@
 ##################################### Start #################################################
 #############################################################################################
 
-# testing, remove later
-x<-peha_count[peha_count$Site=="Dry Lake","Year"]
-y<-peha_count[peha_count$Site=="Dry Lake","TotRos"]
-j<-4
-i<-1
-####
-
 CountPVA <- function(x,y){
-  library(popbio) #should use popbio
-
-	Yrs <- length(unique(x));	rsq <- c();	xvar <- c();	ySpecies <- c()
-	PVA.lm <- list(); mu_sp <- c(); year.int <- c()
-  Year1<-c(); Year2<-c()
   
-	for(j in 4:Yrs){		# gives 3 transitions before the first Count PVA calculation
-		count1 <- x[1:j]
-		yrs <- length(count1)
-			for(i in 1:(yrs-1)){
-				yr <- sqrt((x[i+1]) - (x[i]))   #the sqrt of the difference in years
-        yr.yr <- data.frame(Year1=x[i],Year2=x[i+1])
-				xvar <- c(xvar, yr)         #create a vector of sqrt number of year transitions
-				y1 <- ( log10(y[i+1]/y[i]) )/yr   #finds the log proportion of the next to current year's count divided by the sqrt transition
-				ySpecies <- c(ySpecies, y1) #create a vector of log change        
-				PVA.lm <- lm(ySpecies ~ -1 + xvar)
-				mu_sp1 <- predict(PVA.lm, level= 0.95,
-                          interval = "confidence",
-                          se.fit = T)$fit[1,]
-        Year1 <- c(Year1,x[i])
-				Year2 <- c(Year2,x[i+1])
-			}
-    PVA.table <-data.frame(xvar,ySpecies,Year1,Year2)  #first element of list, doubles the data
+  LM.table <- c()
+  
+	for(yrs in 4:length(unique(x))){		# gives 3 transitions before the first Count PVA calculation
+		ySpecies <- c(); xvar <- c()
+		rsq <- c();
+		PVA.lm <- list()
+		#Year1<-c(); Year2<-c(); 
+    rm(PVA.table)
+    
+    y.count <- y[1:yrs]
+    x.years <- x[1:yrs]
+    ySpecies <- log10(y.count[-1]/y.count[-length(y.count)])
+    yr <- sqrt(x.years[-1]-x.years[-length(x.years)])
+    
+		PVA.lm <- lm(ySpecies ~ -1 + yr)
+		mu_sp <- predict(PVA.lm, level= 0.95,
+		                 interval = "confidence",
+		                 se.fit = T)$fit[1,]
     rsq <- c(rsq, R2 = summary(PVA.lm)$adj.r.squared)	# pull R squared values from each year interval 
-    LM.table <- rbind(LM.table,data.frame(rsq,RangeStart=min(x),RangeEnd=x[j],t(mu_sp1)))    
-		rm(ySpecies); rm(xvar); rm(PVA.table)
-		ySpecies <- c(); xvar <- c(); PVA.table <- list()
-    #mu_sp <- rbind(mu_sp, mu_sp1)
+    LM.table <- rbind(LM.table,data.frame(rsq,RangeStart=min(x),RangeEnd=x[yrs],t(mu_sp)))    
 	}
-
-  list(PVA.table,LM.table)
+	Year1 <- x.years[-length(x.years)]
+	Year2 <- x.years[-1]
+	PVA.table <-data.frame(yr,ySpecies,Year1,Year2)
+  
+  list(PVA = PVA.table,LM = LM.table)
 }
 
-save(CountPVA, file = "CountPVAFunction.R")
+
+save(CountPVA, file = "Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R")
 
 #############################################################################################
 ############################### Count PVA Function ##########################################
 ####################################### End #################################################
 #############################################################################################
-
-
-
-#R.sq <<- rsq
-#colnames(R.sq) <<- "R.squared"
-#mu.s <<- mu_sp
-#colnames(mu.s) <<- c("fit", "lwr", "upr")
-#growth <<- mu_sp
-# years <<- year.int   This is now part of main table - REMOVE!!!
-#growth.exp <<- exp(growth)
-#lambda <<- data.frame(cbind((min(years[,2])-3):(max(years[,2])-1),Sitemu))
-#year.int <- data.frame(rbind(year.int, year.int1))
-
-#Adding a copy each year. Need to get to one transition, no wait...?? 
-table(LM.table$RangeEnd, LM.table$RangeStart)
-
-###############################EXAMPLE##########################################
-
-# to see how the function works, test with this example:
-
-#Q:\Research\All_Projects_by_Species\Astragalus_microcymbus\R_Analysis\R_tables\
-# PlotSummary_2012
-
-
-countAsMi <- read.csv(file.choose(""), header = TRUE, as.is = TRUE)
-
-# Count based on individuals that were above ground = "Total.Alive", excluding dormant
-NumperYr <- aggregate(countAsMi$Total.Alive, 
-	list(Site = countAsMi$Site, Year = countAsMi$Year),
-	sum)	
-
-# Format the data so each site is a column and number of individauls per year (row)
-num <- reshape(NumperYr, idvar = "Year", timevar = "Site", direction = "wide")
-
-num	# an example of a table with a year column and count columns
-x <- num$Year
-y <- num$x.5
-
-## Testing example
-CountPVA(num[,1],num[,4])
-
-par(mar = c(5,4,1,1))
-plot(years[,2], growth.exp[,1], xlab = "Length of study (years)",
-	ylim = c(min(growth.exp[,2]), max(growth.exp[,3])),
-	ylab = "Growth rate",
-	xaxt = "n",
-	main = "")
- lines(years[,2], growth.exp[,2], col="red")
- lines(years[,2], growth.exp[,3], col="red")
-abline(h=1, col = "grey")
-axis(1, at = min(years[,2]):max(years[,2]), labels = 4:(length(num[,1])))
-
-
-growth
-
-mu.s
-
-R.sq
-
-growth.exp 
-
 
 
 
