@@ -26,12 +26,8 @@ CountPVA <- function(x,y){
   LM.table <- c()
   
 	for(yrs in 4:length(unique(x))){		# gives 3 transitions before the first Count PVA calculation
-		ySpecies <- c(); xvar <- c()
-		rsq <- c();
-		PVA.lm <- list()
-		#Year1<-c(); Year2<-c(); 
-    rm(PVA.table)
-    
+		rsq <- c(); PVA.lm <- list()
+  
     y.count <- y[1:yrs]
     x.years <- x[1:yrs]
     ySpecies <- log10(y.count[-1]/y.count[-length(y.count)])
