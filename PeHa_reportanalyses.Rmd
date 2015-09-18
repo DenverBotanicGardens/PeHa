@@ -272,9 +272,12 @@ AE.list <- CountPVA(peha_count[peha_count$Site=="Above Eagle","Year"],
 ```
 
 
-Using these count estimates, the population growth rate (λ) at Above Eagle is 0.99 (95% CI: 0.94-1.04) and at Dry Lake is 0.99 (95% CI: 0.84-1.18).     
+Using these count estimates, the population growth rate (λ) at Above Eagle is 0.99 (95% CI: 0.94-1.04) and at Dry Lake is 0.98 (95% CI: 0.84-1.14).     
 ```{r}
-
+lambda.DL <- DL.list[[2]][nrow(DL.list[[2]]),]
+lambda.AE <- AE.list[[2]][nrow(AE.list[[2]]),]
+lamDL <- lapply(lambda.DL[,4:6], function(x) exp(x))
+lamAE <- lapply(lambda.AE[,4:6], function(x) exp(x))
 ```
 
 Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
@@ -300,6 +303,25 @@ ggplot(DL.list[["LM"]], aes(RangeEnd,exp(fit))) +
   geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red"))+
   ggtitle("Dry Lake")
+
+```
+
+Rosettes fluctuated over time
+```{r}
+peha_sumSE[by(peha_sumSE, as.factor(peha_sumSE$Site), 
+              function(x) rownames(peha_sumSE)[which.max(peha_sumSE$TotRos)]),]
+peha_sumSE[by(peha_sumSE, as.factor(peha_sumSE$Site), 
+              function(x) rownames(peha_sumSE)[which.min(peha_sumSE$TotRos)]),]
+
+max <- aggregate(TotRos ~ Site, peha_sum, max)
+merge(max,peha_sum)
+
+min <- aggregate(TotRos ~ Site, peha_sum, min)
+merge(min,peha_sum)
+
+
+peha_sumSE[which.max(peha_sumSE$TotRos),]
+peha_sumSE[which.min(peha_sumSE$TotRos),]
 
 ```
 
@@ -364,35 +386,69 @@ hist(peha_all_sum$Fl)
 hist(asin(sqrt(peha_all_sum$Fl)))
 
 hist(peha_all_sum$Br)
-hist(asin(sqrt(peha_all_sum$Br)
-
-peha.aov.ros <- aov(log(TotRos+1)~Year*Site + 
-                      Error(Transect/(Year*Site)), 
-                    data = peha_all_sum)
-summary(peha.aov.ros)
+hist(asin(sqrt(peha_all_sum$Br)))
 
 # add a subject unique identifier row
 peha_all_sum$subject <- paste(substr(peha_all_sum$Site,1,1),
                               substr(peha_all_sum$Year,3,4),
                               peha_all_sum$Transect, sep=".")
 
+# still missing the elipse-something corrections
+peha.aov.ros <- aov(log(TotRos+1)~Year*Site + 
+                      Error(subject/(Year*Site)), 
+                    data = peha_all_sum)
+summary(peha.aov.ros)
+
 peha.aov.ros1 <- aov(log(TotRos+1)~Year*Site + Error(subject), data=peha_all_sum) 
 summary(peha.aov.ros1) 
+```
 
-#rows are subjects and columns are levels of repeated measures factor - site and year
-site.year <- apply(expand.grid(unique(peha_all_sum$Site),unique(peha_all_sum$Year)),1,
-      function(x) paste(x[1],x[2],sep="."))
+Above Eagle is significantly decreasing while Dry Lake is stable 
+```{r}
+summary(lm(log(TotRos+1)~Year*Site, data=peha_all_sum))
 
-#peha.aov.ros2 <- Anova(peha_all_sum, idata = )
+ggplot(peha_all_sum, aes( Year, log(TotRos+1), colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab(expression(paste("log transformed Average rosettes per 60m"^2)))
 
-#library(ez)
+ggplot(peha_all_sum, aes(Year, TotRos, colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab(expression(paste("Average rosettes per 60m"^2)))
 
+```
 
-#ezANOVA(data = peha_all_sum, wid=.(Site), dv = .(TotRos),
-#        within = .(Year,Site), between = .(Year), observed = .(Year))
+There is a signficantly greater proportion of reproductive individuals found at Above Eagle than at Dry Lake 
+```{r}
+peha.aov.fl <-aov(asin(sqrt(Fl))~Year*Site + Error(subject), data=peha_all_sum) 
+summary(peha.aov.fl) 
 
-peha.aov.fl <-aov(asin(sqrt(PerRepro/100))~Year*Site + Error(Plot), data=peha) 
-summary(PeHa.aov) 
+ggplot(peha_all_sum, aes(Year, asin(sqrt(Fl)), colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab("Average percent of reproductive individuals (arcsine transformed)")
+
+ggplot(peha_all_sum, aes(Year, Fl, colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab("Average percent of reproductive individuals")
+```
+
+Significantly more browsing at Dry Lake
+```{r}
+peha.aov.Br <-aov(asin(sqrt(Br))~Year*Site + Error(subject), data=peha_all_sum) 
+summary(peha.aov.Br) 
+
+ggplot(peha_all_sum, aes(Year, asin(sqrt(Br)), colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab("Average percent of browsed individuals (arcsine transformed")
+
+ggplot(peha_all_sum, aes(Year, Br, colour = Site)) +
+  geom_point() +
+  geom_smooth(method="lm") +
+  ylab("Average percent of browsed individuals")
 ```
 
 
