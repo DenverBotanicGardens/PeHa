@@ -308,20 +308,22 @@ ggplot(DL.list[["LM"]], aes(RangeEnd,exp(fit))) +
 
 Rosettes fluctuated over time
 ```{r}
-peha_sumSE[by(peha_sumSE, as.factor(peha_sumSE$Site), 
-              function(x) rownames(peha_sumSE)[which.max(peha_sumSE$TotRos)]),]
-peha_sumSE[by(peha_sumSE, as.factor(peha_sumSE$Site), 
-              function(x) rownames(peha_sumSE)[which.min(peha_sumSE$TotRos)]),]
+peha_totros <- aggregate(list(TotRos = peha$X.ofRosettes), 
+                      by=list(Site=peha$Site, Year=peha$Year), 
+                      FUN = sum)
 
-max <- aggregate(TotRos ~ Site, peha_sum, max)
-merge(max,peha_sum)
+max <- aggregate(TotRos ~ Site, peha_totros, FUN = function(x) max(x))
+merge(max,peha_totros)
 
-min <- aggregate(TotRos ~ Site, peha_sum, min)
-merge(min,peha_sum)
-
+min <- aggregate(TotRos ~ Site, peha_totros, function(x) min(x))
+merge(min,peha_totros)
 
 peha_sumSE[which.max(peha_sumSE$TotRos),]
 peha_sumSE[which.min(peha_sumSE$TotRos),]
+
+lapply(split(peha_sum, peha_sum$Site), function(x) {
+  x[which.max(x$TotRos),]
+})
 
 ```
 
