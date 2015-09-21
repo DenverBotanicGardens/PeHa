@@ -328,6 +328,18 @@ lapply(split(peha_sum, peha_sum$Site), function(x) {
 ```
 
 
+##Dry Lake
+#Percent Herbivory - t.tests
+```{r}
+lapply(split(peha_fl.herb, list(peha_fl.herb$Site,peha_fl.herb$Year), function(x) {
+  
+}
+
+
+
+```
+
+
 Need the total precipitation for the previous 12 months (July-June) merged to peha_all. x is sum of precip last 12 months
 ```{r}
 peha_all_sum <- merge(peha_all, peha_cprecip, by.y = c("Site","Prev12"), by.x = c("Site","Year"))
