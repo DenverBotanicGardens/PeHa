@@ -375,7 +375,35 @@ Sure seems to be missing something..
 ANOVA for by factors Site and Year:     
 rosettes per transect log transformed     
 % reproductive (arcsin squareroot transformed)       
-% herbivory (arcsin squareroot transformed)
+% herbivory (arcsin squareroot transformed)      
+<http://yatani.jp/teaching/doku.php?id=hcistats:anova#how_to_report_the_results_of_one-way_anova>       
+check for sphericity with a mauchly.test
+```{r}
+#Matrix with rows as within-subject factors (subject) and columns are the groups to compare (Year and Site or maybe just Year?)
+data <- reshape(peha_all_sum[,c(1:4)], 
+             idvar = c("Site","Transect"), 
+             timevar = "Year", 
+             v.names = c("TotRos"), direction = "wide")
+
+#Build multivariate linear model with matrix
+model <- lm(as.matrix(data[,-(1:2)])~1)
+
+#define design by list of independent variables
+design <- factor(unique(peha_all_sum$Year))
+
+library(car)
+
+options(contrasts = c("contr.sum","contr.poly"))
+aov <- Anova(model, idata=data.frame(design), idesign=~design, type="III")
+summary(aov, multivariate=FALSE)
+
+#Departure from the sphericity. Epsilon (0-1) Generally use Greenhouse-Geisse unless it's greater than 0.75. Then multiply the degree of freedom by epsilon 
+#You can make a correction by multiplying the degree of freedom by the epsilon. Let's assume that we need to make a correction. The degree of freedom of design is 2. The epsilon of Greenhouse-Geisser is 0.734. Thus, the new degree of freedom after the correction is 1.468. You also do the same thing for the second degree of freedom (i.e., 14 * 0.734 = 10.276). So now you say you have F(1.47, 10.28)=10.92 instead of F(2, 14)=10.92. The p value with the adjusted F value is available right next to the epsilon. In this example, the p value is 0.00452, and you have a significant effect. You don't have to do anything for the effect size.
+
+#NEED TO DO SOMETHING TO ACCOUNT FOR departure from sphericity
+```
+
+
 ```{r}
 par(mfrow = c(1,2))
 hist(peha_all_sum$TotRos)
