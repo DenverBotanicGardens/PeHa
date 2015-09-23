@@ -109,17 +109,12 @@ peha_m <- merge(peha_sum, peha_fl.herb, by = c("Site","Year","Transect"))
 #in 2012 there were no rosettes found in two transects; 9 and 28
 table(peha_m$Transect, peha_m$Year) 
 table(peha_m$Transect, peha_m$Site) # DL transect 9 and 28
+#Add zero rows for 2012 transects 9 and 28 at Dry Lake
 peha_m <- rbind(peha_m, c("Dry Lake",2012,9,0,0,0), c("Dry Lake",2012,28,0,0,0))
-#Should be some apply function changing these all to numeric
-lapply(peha_m[,1:6], function(x) as.numeric(x))
-do.call()
-
-peha_m$TotRos <- as.numeric(peha_m$TotRos)
-peha_m$Fl <- as.numeric(peha_m$Fl)
-peha_m$Br <- as.numeric(peha_m$Br)
-
+peha_m[,c("TotRos","Fl","Br","Year")] <- lapply(peha_m[,c("TotRos","Fl","Br","Year")], as.numeric)
 
 peha_all <- merge(peha_m, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
+table(peha_all$Site,peha_all$Transect)
 ```
 
 
@@ -164,7 +159,6 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 
 
 Add summary statistics to the peha table
-#####Now that I added zeros for the two DL transects missing data (needing zeros), these functions aren't working!!  Oh! Turned them into characters instead of numeric!
 ```{r}
 peha_sumSE <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site","Year"))
 peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
@@ -259,6 +253,7 @@ peha.c.summary <- aggregate(peha.c[,2:4], peha.c[,c("Site","Prev12","season")],
 ```
 
 
+
 Merge summary data with precipition data
 ```{r}
 peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","Prev12"))
@@ -306,7 +301,8 @@ ggplot(AE.list[["LM"]], aes(RangeEnd,exp(fit))) +
   theme(legend.position="none") +
   geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red")) +
-  ggtitle("Above Eagle")
+  ggtitle("Above Eagle") +
+  geom_hline(aes(yintercept=1), colour = "darkgreen")
 
 ggplot(DL.list[["LM"]], aes(RangeEnd,exp(fit))) +
   geom_point() +
@@ -317,7 +313,8 @@ ggplot(DL.list[["LM"]], aes(RangeEnd,exp(fit))) +
   theme(legend.position="none") +
   geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red"))+
-  ggtitle("Dry Lake")
+  ggtitle("Dry Lake") +
+  geom_hline(aes(yintercept=1), colour = "darkgreen")
 
 ```
 
@@ -336,7 +333,9 @@ ggplot(peha_all_sum, aes(x, TotRos, colour = Site)) +
   theme_bw() +
   xlab("") +
   ylab(expression(paste("Average rosettes per 60m"^2))) +
-  theme(legend.justification=c(0,1), legend.position=c(0,1))
+  theme(legend.justification=c(0,1), legend.position=c(0,1))+
+  ggtitle("a)") +
+  theme(plot.title=element_text(hjust=0))
 ```
 
 ```{r}
@@ -347,7 +346,9 @@ ggplot(peha_all_sum, aes(x, Fl, colour = Site)) +
   theme_bw() +
   xlab("") +
   ylab("% reproductive individuals") +
-  theme(legend.justification=c(0,1), legend.position=c(0,1))
+  theme(legend.justification=c(0,1), legend.position=c(0,1))+
+  ggtitle("b)") +
+  theme(plot.title=element_text(hjust=0))
 ```
 
 ```{r}
@@ -358,7 +359,9 @@ ggplot(peha_all_sum, aes(x, Br, colour = Site)) +
   theme_bw() +
   xlab("Annual precipitation (mm)") +
   ylab("% of individuals with herbivory") +
-  theme(legend.justification=c(0,0), legend.position=c(0,0))
+  theme(legend.justification=c(0,0), legend.position=c(0,0))+
+  ggtitle("c)") +
+  theme(plot.title=element_text(hjust=0))
 ```
  
  
@@ -399,7 +402,7 @@ peha.aov.ros1 <- aov(log(TotRos+1)~Year*Site + Error(subject), data=peha_all_sum
 summary(peha.aov.ros1) 
 ```
 
-Above Eagle is significantly decreasing while Dry Lake is stable 
+Above Eagle is significantly decreasing while Dry Lake is stable - looks like no, they are both signficantly decreasing?
 ```{r}
 summary(lm(log(TotRos+1)~Year*Site, data=peha_all_sum))
 
@@ -485,7 +488,7 @@ t.listdl <- vector("list", length(yrs)-1)
 names(t.listdl) <- c(paste(yrs[-length(yrs)],yrs[-1], sep = "."))
 for(yr in 1:(length(yrs)-1)){
   t.listdl[[yr]] <- t.test(Br~Year, 
-                        data = subset(dl, Year == yrs[yr] | Year == yrs[yr+1]))
+                        data = subset(dl, Year == yrs[yr] | Year == yrs[yr+1]), paired = TRUE)
 }
 
 t.listdl
@@ -497,7 +500,7 @@ results.dl
 t.listae <- vector("list", length(yrs)-1)
 for(yr in 1:(length(yrs)-1)){
   t.listae[[yr]] <- t.test(Br~Year, 
-                        data = subset(ae, Year == yrs[yr] | Year == yrs[yr+1]))
+                        data = subset(ae, Year == yrs[yr] | Year == yrs[yr+1]), paired = TRUE)
 }
 
 t.listae
@@ -522,27 +525,70 @@ names(t.listdl) <- c(paste(yrs[-length(yrs)],yrs[-1], sep = "."))
 for(yr in 1:(length(yrs)-1)){
   t.listdl[[yr]] <- t.test(TotRos~Year, 
                         data = subset(dl, Year == yrs[yr] | Year == yrs[yr+1]), 
-                        paired = TRUE,
-                        na.action = na.omit)
+                        paired = TRUE)
 }
 
 t.listdl
-results.dl <- data.frame(sapply(t.listdl, "[", c("p.value","statistic","parameter")))
+results.dl <- data.frame(sapply(t.listdl, "[", c("p.value","statistic","estimate","parameter")))
 names(results.dl) <- c(paste(yrs[-length(yrs)],yrs[-1], sep = "."))
 results.dl
 
 #Above Eagle
 t.listae <- vector("list", length(yrs)-1)
+names(t.listae) <- c(paste(yrs[-length(yrs)],yrs[-1], sep = "."))
 for(yr in 1:(length(yrs)-1)){
   t.listae[[yr]] <- t.test(TotRos~Year, 
-                        data = subset(ae, Year == yrs[yr] | Year == yrs[yr+1]))
+                        data = subset(ae, Year == yrs[yr] | Year == yrs[yr+1]), paired = TRUE)
 }
 
 t.listae
-results.ae <- data.frame(sapply(t.listae, "[", c("p.value","statistic","parameter")))
+results.ae <- data.frame(sapply(t.listae, "[", c("p.value","statistic","estimate","parameter")))
 names(results.ae) <- c(paste(yrs[-length(yrs)],yrs[-1], sep = "."))
 results.ae
 ```
 
+ANOVA and lm of precipitation
+```{r}
+peha.climate.aov <- aov(Precip~Prev12*Site, data = subset(peha.c, Prev12 < 2016))
+summary(peha.climate.aov)
+```
 
+
+
+ANOVA and lm of total rosettes and precipitation
+```{r}
+summary(lm(log(TotRos+1)~Precip*Site,data = peha_all_sum))
+
+# Dry Lake only
+summary(lm(log(TotRos+1)~Precip,data = subset(peha_all_sum, Site == "Dry Lake")))
+
+
+# Above Eagle only
+summary(lm(log(TotRos+1)~Precip,data = subset(peha_all_sum, Site == "Above Eagle")))
+```
+
+ANOVA and lm of percent reproductive and precipitation
+```{r}
+summary(lm(asin(sqrt(Fl))~Precip*Site,data = peha_all_sum))
+
+# Dry Lake only
+summary(lm(asin(sqrt(Fl))~Precip,data = subset(peha_all_sum, Site == "Dry Lake")))
+
+
+# Above Eagle only
+summary(lm(asin(sqrt(Fl))~Precip,data = subset(peha_all_sum, Site == "Above Eagle")))
+```
+
+
+ANOVA and lm of percent browsing and precipitation
+```{r}
+summary(lm(asin(sqrt(Br))~Precip*Site,data = peha_all_sum))
+
+# Dry Lake only
+summary(lm(asin(sqrt(Br))~Precip,data = subset(peha_all_sum, Site == "Dry Lake")))
+
+
+# Above Eagle only
+summary(lm(asin(sqrt(Br))~Precip,data = subset(peha_all_sum, Site == "Above Eagle")))
+```
 
