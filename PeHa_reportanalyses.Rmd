@@ -8,6 +8,8 @@ output: html_document
 library(ggplot2)
 library(reshape2)
 library(grid)
+library(devtools)
+library(lattice)
 ```
 
 ctrl+Alt+c will run a chunck of code
@@ -164,6 +166,8 @@ peha_sumSE <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site","Year"
 peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
 peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
 peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
+
+peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
 ```
 
 Add "a)" to each plot     
@@ -253,6 +257,11 @@ peha.c.summary <- aggregate(peha.c[,2:4], peha.c[,c("Site","Prev12","season")],
 ```
 
 
+####Precip in Table 1
+```{r}
+summarySE(peha.c.summary, measurevar="Precip", groupvars=c("Site"))
+```
+
 
 Merge summary data with precipition data
 ```{r}
@@ -260,8 +269,7 @@ peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","
 ```
 
 
-
-Need to fix CountPVA to spit out one data.frame and necessitate assigning it to something   
+CountPVA  
 <http://www.montana.edu/screel/Webpages/conservation%20biology/BIOL%20521%20count%20based%20PVA%20grizzly%20data.R>    
 
 CountPVA produces a list of two data frames, PVA and LM. PVA has the annual log growth rates and LM has the results of the linear model from Morris and Doak Population Viability Analysis
@@ -365,70 +373,15 @@ ggplot(peha_all_sum, aes(x, Br, colour = Site)) +
 ```
  
  
-"To adhere to the sum-to-zero convention for effect weights" suggests running the following code before running anovas in R   
-Sure seems to be missing something..
+
+# add a subject unique identifier row      
+Use for individual ID for repeated measures ANOVA
 ```{r}
-#options(contrasts(c("contr.sum","contr.poly")))
-```
-
-<https://gribblelab.wordpress.com/2009/03/09/repeated-measures-anova-using-r/>      
-ANOVA for by factors Site and Year:     
-rosettes per transect log transformed     
-% reproductive (arcsin squareroot transformed)       
-% herbivory (arcsin squareroot transformed)      
-<http://yatani.jp/teaching/doku.php?id=hcistats:anova#how_to_report_the_results_of_one-way_anova>       
-check for sphericity with a mauchly.test
-```{r}
-#Matrix with rows as within-subject factors (subject) and columns are the groups to compare (Year and Site or maybe just Year?)
-data <- reshape(peha_all_sum[,c(1:4)], 
-             idvar = c("Site","Transect"), 
-             timevar = "Year", 
-             v.names = c("TotRos"), direction = "wide")
-
-#Build multivariate linear model with matrix
-model <- lm(as.matrix(data[,-(1:2)])~1)
-
-#define design by list of independent variables
-design <- factor(unique(peha_all_sum$Year))
-
-library(car)
-
-options(contrasts = c("contr.sum","contr.poly"))
-aov <- Anova(model, idata=data.frame(design), idesign=~design, type="III")
-summary(aov, multivariate=FALSE)
-
-#Departure from the sphericity. Epsilon (0-1) Generally use Greenhouse-Geisse unless it's greater than 0.75. Then multiply the degree of freedom by epsilon 
-#You can make a correction by multiplying the degree of freedom by the epsilon. Let's assume that we need to make a correction. The degree of freedom of design is 2. The epsilon of Greenhouse-Geisser is 0.734. Thus, the new degree of freedom after the correction is 1.468. You also do the same thing for the second degree of freedom (i.e., 14 * 0.734 = 10.276). So now you say you have F(1.47, 10.28)=10.92 instead of F(2, 14)=10.92. The p value with the adjusted F value is available right next to the epsilon. In this example, the p value is 0.00452, and you have a significant effect. You don't have to do anything for the effect size.
-
-#NEED TO DO SOMETHING TO ACCOUNT FOR departure from sphericity
-```
-
-
-```{r}
-par(mfrow = c(1,2))
-hist(peha_all_sum$TotRos)
-hist(log(peha_all_sum$TotRos+1))
-
-hist(peha_all_sum$Fl)
-hist(asin(sqrt(peha_all_sum$Fl)))
-
-hist(peha_all_sum$Br)
-hist(asin(sqrt(peha_all_sum$Br)))
-
-# add a subject unique identifier row
 peha_all_sum$subject <- paste(substr(peha_all_sum$Site,1,1),
                               substr(peha_all_sum$Year,3,4),
                               peha_all_sum$Transect, sep=".")
-
-# still missing the elipse-something corrections
-peha.aov.ros <- aov(log(TotRos+1)~Year*Site + 
-                      Error(subject/(Year*Site)), 
-                    data = peha_all_sum)
-summary(peha.aov.ros)
-
-peha.aov.ros1 <- aov(log(TotRos+1)~Year*Site + Error(subject), data=peha_all_sum) 
-summary(peha.aov.ros1) 
 ```
+
 
 Above Eagle is significantly decreasing while Dry Lake is stable - looks like no, they are both signficantly decreasing?
 ```{r}
@@ -619,4 +572,276 @@ summary(lm(asin(sqrt(Br))~Precip,data = subset(peha_all_sum, Site == "Dry Lake")
 # Above Eagle only
 summary(lm(asin(sqrt(Br))~Precip,data = subset(peha_all_sum, Site == "Above Eagle")))
 ```
+
+ 
+"To adhere to the sum-to-zero convention for effect weights" suggests running the following code before running anovas in R   
+Sure seems to be missing something..
+```{r}
+#options(contrasts(c("contr.sum","contr.poly")))
+```
+
+<https://gribblelab.wordpress.com/2009/03/09/repeated-measures-anova-using-r/>      
+ANOVA for by factors Site and Year:     
+rosettes per transect log transformed     
+% reproductive (arcsin squareroot transformed)       
+% herbivory (arcsin squareroot transformed)      
+<http://yatani.jp/teaching/doku.php?id=hcistats:anova#how_to_report_the_results_of_one-way_anova>       
+check for sphericity with a mauchly.test
+```{r}
+#Matrix with rows as within-subject factors (subject) and columns are the groups to compare (Year and Site or maybe just Year?)
+data <- reshape(peha_all_sum[,c(1:4)], 
+             idvar = c("Site","Transect"), 
+             timevar = "Year", 
+             v.names = c("TotRos"), direction = "wide")
+
+#Build multivariate linear model with matrix
+model <- lm(as.matrix(data[,-(1:2)])~1)
+
+#define design by list of independent variables
+design <- factor(unique(peha_all_sum$Year))
+
+library(car)
+
+options(contrasts = c("contr.sum","contr.poly"))
+aov <- Anova(model, idata=data.frame(design), idesign=~design, type="III")
+summary(aov, multivariate=FALSE)
+```
+Departure from the sphericity. Epsilon (0-1) Generally use Greenhouse-Geisse unless it's greater than 0.75. Then multiply the degree of freedom by epsilon       
+You can make a correction by multiplying the degree of freedom by the epsilon. Let's assume that we need to make a correction. The degree of freedom of design is 2. The epsilon of Greenhouse-Geisser is 0.734. Thus, the new degree of freedom after the correction is 1.468. You also do the same thing for the second degree of freedom (i.e., 14 * 0.734 = 10.276). So now you say you have F(1.47, 10.28)=10.92 instead of F(2, 14)=10.92. The p value with the adjusted F value is available right next to the epsilon. In this example, the p value is 0.00452, and you have a significant effect. You don't have to do anything for the effect size.         
+NEED TO DO SOMETHING TO ACCOUNT FOR departure from sphericity
+
+```{r, eval=FALSE}
+model0 <- update(model, ~0)
+model2 <- update(model, ~design)
+anova.mlm(model, model0)
+```
+
+
+# Avoid assumption of sphericity   
+<http://stats.stackexchange.com/questions/2104/how-to-get-sphericity-in-r-for-a-nested-within-subject-design>
+Use modern mixed modeling methods  
+random argulment set to ~1|<group structure> gives a random intercept for each group with a spherical structure    
+Can use weights argument to model non-constant variance within or between gorups     
+coorelation argument to model non-constant covariance   
+model random slopes by adding terms to the LHS of the | in the random formula
+```{r}
+library(nlme)
+
+#no assumption of compound symmetry
+anova(lme(TotRos ~ Site*Year, random=~1|subject, method="ML", data = peha_all_sum))
+
+
+anova(lme(log(TotRos+1) ~ Site*Year, random=~1|subject, method="ML", data = peha_all_sum))
+
+anova(lme(asin(sqrt(Fl)) ~ Site*Year, random=~1|subject, method="ML", data = peha_all_sum))
+
+anova(lme(asin(sqrt(Br)) ~ Site*Year, random=~1|subject, method="ML", data = peha_all_sum))
+
+
+#failed?!
+#assume compound symmetry
+anova(lme(log(TotRos+1) ~ Year, random=~1|Site, 
+          correlation=corCompSymm(form=~1|Site), 
+          method="ML", data = peha_all_sum))
+
+#failed for Site?
+#model random slopes, makes sense to allow the two sites to slope differnt from each other
+#No idea if this is correct way to set up this model
+anova(lme(TotRos ~ Year, random=~1|Site/Year,
+          method="REML", data = peha_all_sum))
+
+anova(lme(TotRos~Year,
+          random=list(Site=pdBlocked(list(~1, pdIdent(~Site-1)))),
+          method="ML", data = peha_all_sum))
+
+library(lme4)
+summary(lmer(TotRos~Year+(Site|Year), data=peha_all_sum))
+
+#Wonder about each population seperately? Really should test for differences between sites since climate things are mostly the same (year as that lumping factor) 
+#Dry lake
+summary(aov(TotRos~Year+Error(subject/Year), data=dl))
+
+anova(lme(TotRos~Year, random=~1|subject, method="ML", data=dl))
+
+#Above Eagle
+summary(aov(TotRos~Year+Error(subject/Year), data=ae))
+
+anova(lme(TotRos~Year, random=~1|subject, method="ML", data=ae))
+```
+
+
+
+```{r}
+par(mfrow = c(1,2))
+hist(peha_all_sum$TotRos)
+hist(log(peha_all_sum$TotRos+1))
+
+hist(peha_all_sum$Fl)
+hist(asin(sqrt(peha_all_sum$Fl)))
+
+hist(peha_all_sum$Br)
+hist(asin(sqrt(peha_all_sum$Br)))
+
+# still missing the elipse-something corrections
+peha.aov.ros <- aov(log(TotRos+1)~Year*Site + 
+                      Error(subject/(Year*Site)), 
+                    data = peha_all_sum)
+summary(peha.aov.ros)
+
+peha.aov.ros1 <- aov(log(TotRos+1)~Year*Site + Error(subject), data=peha_all_sum) 
+summary(peha.aov.ros1) 
+```
+
+
+###Appendix    
+
+```{r}
+
+Appendix.list <- lapply(split(peha, list(peha$Site,peha$Year)),
+                   function(x) sapply(split(x, x$Transect),
+                                      function(y) c(length(y$X.ofRosettes),
+                                                    sum(y$X.ofRosettes),
+                                                    sum(y$Fl),
+                                                    sum(y$Fr_Fl),
+                                                    sum(y$Br))))
+
+Appendix <- t(data.frame(Appendix.list))
+setwd(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables"))
+write.csv(Appendix, file="Appendix.csv")
+```
+
+
+###PCA for climate factors on number of Rosettes   
+Note for summary and loadings <http://stats.stackexchange.com/questions/2844/what-is-the-difference-between-summary-and-loadings-for-princomp?rq=1>
+
+```{r}
+
+season <- reshape(subset(peha.c.summary, Prev12 < 2016), 
+                  idvar = c("Site","Prev12"), 
+                  timevar = "season", 
+                  direction ="wide")
+
+
+library(psych)
+cor.plot(cor(season[,-(1:2)]), numbers = TRUE)
+
+#Keep Precip.fall: should take out Tmax.fall
+#Keep Tmin.fall: take out Tmin.summer and Tmin.winter
+#Keep Precip.spring: take out Precip.winter
+#Keep Tmax.spring: take out Tmin.spring (and summer)
+#Keep Precip.summer: take out Tmin.summer
+#Keep Tmax.winter: take out Tmin.winter
+pairs(season[,-which(names(season) %in% 
+                       c("Site","Prev12","Tmax.fall","Tmin.summer",
+                         "Tmin.winter","Precip.winter","Tmin.spring",
+                         "Tmax.summer"))])
+
+
+
+peha.pca <- princomp(season[,-which(names(season) %in% 
+                       c("Site","Prev12","Tmax.fall","Tmin.summer",
+                         "Tmin.winter","Precip.winter","Tmin.spring",
+                         "Tmax.summer"))],
+                     cor = TRUE)
+peha.pca$sdev
+summary(peha.pca)
+peha.load <- loadings(peha.pca)
+peha.pc <- predict(peha.pca)
+
+
+source_url("https://raw.github.com/JoFrhwld/FAAV/master/r/stat-ellipse.R")
+
+# make summarized by site and year data
+peha_sumSite <- aggregate(list(TotRos = peha$X.ofRosettes), 
+                      by=list(Site=peha$Site, Year=peha$Year), 
+                      FUN = sum)
+
+peha_fl.herbSite <- aggregate(peha[,c(7,9)], 
+                     by=list(Site=peha$Site, Year=peha$Year),
+                     FUN = function(x) sum(x)/length(x))
+
+# Doesn't have 2014 data, need to sort by year then site
+peha_site <- merge(peha_sumSite,peha_fl.herbSite, by = c("Site","Year"))
+peha_site <- peha_site[order(peha_site$Year,peha_site$Site),]
+
+ph <- data.frame(peha.pc[-(37:38),], peha_site)
+#Add high low mid for years of rosettes, reproduction, browsing
+
+ros <- do.call("rbind",lapply(split(ph, ph$Site), 
+                              function(x) c(Ros = summary(x$TotRos),
+                                            Fl = summary(x$Fl),
+                                            Br = summary(x$Br))))
+rs <- data.frame(ros,Site = rownames(ros))
+
+rs.1 <- merge(rs, ph, by = "Site")
+
+#Set levels for rosettes above and below the 3rd and 1st quantile
+rs.1$rosl <- "mid"
+rs.1$rosl[rs.1$TotRos > rs.1[,6]] <- "high"
+rs.1$rosl[rs.1$TotRos < rs.1[,3]] <- "low"
+
+#Levels for percent flowering above and below 3rd and 1st quantile
+rs.1$Fll <- "mid"
+rs.1$Fll[rs.1$Fl > rs.1[,"Fl.3rd.Qu."]] <- "high"
+rs.1$Fll[rs.1$Fl < rs.1[,"Fl.1st.Qu."]] <- "low"
+
+#Levels for percent browsing above and below 3rd and 1st qantile
+rs.1$Brl <- "mid"
+rs.1$Brl[rs.1$Br > rs.1[,"Br.3rd.Qu."]] <- "high"
+rs.1$Brl[rs.1$Br < rs.1[,"Br.1st.Qu."]] <- "low"
+
+ggplot(ph, aes(Comp.1,Comp.2, colour = Site)) +
+  geom_point() +
+  stat_ellipse() +
+  theme_bw() +
+  theme(legend.justification=c(1,1), legend.position=c(1,1))
+
+t.test(Comp.2~Site, data = rs.1)
+t.test(Comp.1~Site, data = rs.1)
+
+ggplot(rs.1, aes(Comp.1,Comp.2, colour = rosl)) +
+  geom_point() +
+  geom_text(aes(label = Year)) +
+  stat_ellipse() +
+  facet_wrap(~Site)
+
+summary(aov(lm(Comp.1~rosl+Site, data = rs.1)))
+
+
+ggplot(rs.1, aes(Comp.1,Comp.2, colour = Fll)) +
+  geom_point() +
+  geom_text(aes(label = Year)) +
+  stat_ellipse() +
+  facet_wrap(~Site)
+
+
+ggplot(rs.1, aes(Comp.1,Comp.2, colour = Brl)) +
+  geom_point() +
+  geom_text(aes(label = Year)) +
+  stat_ellipse() +
+  facet_wrap(~Site)
+
+
+```
+
+####PCA using PCA() from "FactoMineR"      
+<http://gastonsanchez.com/blog/how-to/2012/06/17/PCA-in-R.html>
+
+```{r}
+#install.packages("FactoMineR")
+library(FactoMineR)
+
+pca <- PCA(season[,-which(names(season) %in% 
+                       c("Site","Prev12","Tmax.fall","Tmin.summer",
+                         "Tmin.winter","Precip.winter","Tmin.spring"))],
+           graph=FALSE)
+
+pca$eig
+
+#Correlations between variables and PCs, i.e. loadings?
+pca$var$coord
+
+```
+
+
 
