@@ -25,40 +25,35 @@ first column is YYYY-MM and then data in metric
 
 #### Climate data
 ```{r}
-currentyr <- 
+currentyr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
 
-ae_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_precip_2015.csv"), skip=6)
-dl_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_precip_2015.csv"), skip=6)
-ae_tmax <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_tmax_2015.csv"), skip=6)
-dl_tmax <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_maxtemp_2015.csv"), skip=6)
-ae_tmin <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_tmin_2015.csv"), skip=6)
-dl_tmin <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_tmin_2015.csv"), skip=6)
+dl_prism <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_PRISM_",currentyr,".csv",sep=""), skip=10)
+ae_prism <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_PRISM_",currentyr,".csv",sep=""), skip=10)
 
-ae.climate <- data.frame(ae_p,ae_tmax,ae_tmin)
-ae.climate$Site <- "Above Eagle"
+ae_prism$Site <- "Above Eagle"
+dl_prism$Site <- "Dry Lake"
 
-dl.climate <- data.frame(dl_p,dl_tmax,dl_tmin)
-dl.climate$Site <- "Dry Lake"
-
-peha.climate <- rbind(ae.climate,dl.climate)
-peha.climate$Year <- substr(ae.climate$Date,1,4)
-peha.climate$Month <- substr(ae.climate$Date,6,7)
+peha.climate <- rbind(ae_prism,dl_prism)
+peha.climate$Year <- substr(ae_prism$Date,1,4)
+peha.climate$Month <- substr(ae_prism$Date,6,7)
 
 head(peha.climate)
-peha.c <- peha.climate[,c(1,2,4,6:9)]
-names(peha.c) <- c("Date","Precip","Tmax","Tmin","Site","Year","Month")
+peha.c <- peha.climate
+names(peha.c) <- c("Date","Precip","Tmin","Tmax","tmean","vpdmin","vpdmax","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
+
+head(peha.c)
+```
+
+#Summary table from https://research.botanicgardens.org PeHa>Reports>Summary Table (csv)
+```{r}
+peha_summary <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_",currentyr,"_summary.csv", sep=""))
 ```
 
 
+#PeHa>Reports>Raw Data
 ```{r}
-peha_summary <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_2015_summary.csv"))
-```
-
-
-
-```{r}
-peha <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha2015.csv"))
+peha <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha",currentyr,".csv",sep=""))
 
 head(peha)
 ```
@@ -102,11 +97,12 @@ peha_fl.herb <- aggregate(peha[,c(7,9)],
 peha.c$Month <- as.numeric(peha.c$Month)
 peha.c$Year <- as.numeric(peha.c$Year)
 peha.c$Prev12 <- peha.c$Year
-peha.c[peha.c$Month > 6,8] <- peha.c[peha.c$Month > 6,6]+1
+peha.c[peha.c$Month > 6,"Prev12"] <- peha.c[peha.c$Month > 6,"Year"]+1 #8 should be Prev12, 6 is Year
 
-
-peha_c <- aggregate(peha.c[,2:4], peha.c[,c(5,8)], FUN = function(x) mean(x, na.rm = TRUE))
-peha_cprecip <- aggregate(peha.c$Precip, peha.c[,c(5,8)], FUN = sum)
+#Sum precipitation per year
+peha_c <- aggregate(peha.c$Precip, peha.c[,c("Site","Prev12")], 
+                    FUN = function(x) sum(x, na.rm = TRUE))
+#peha_cprecip <- aggregate(peha.c$Precip, peha.c[,c(5,8)], FUN = sum)
 
 peha_m <- merge(peha_sum, peha_fl.herb, by = c("Site","Year","Transect"))
 
@@ -174,7 +170,8 @@ peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
 
 Add "a)" to each plot     
 
-Figure 1a) average rosettes per transect
+Figure 1a) average rosettes per transect   
+700 x 450
 ```{r}
 ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
@@ -227,10 +224,10 @@ ggplot(peha_sumSEprecip, aes(Prev12, Precip, colour=Site)) +
   theme(legend.justification=c(0,1), legend.position=c(0,1))
 ```
 
-
+########START HERE
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
-ggplot(subset(peha_cprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
+ggplot(subset(peha_sumSEprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
