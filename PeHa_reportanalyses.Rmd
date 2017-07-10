@@ -25,6 +25,8 @@ first column is YYYY-MM and then data in metric
 
 #### Climate data
 ```{r}
+currentyr <- 
+
 ae_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_precip_2015.csv"), skip=6)
 dl_p <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/DL_precip_2015.csv"), skip=6)
 ae_tmax <- read.csv(path.expand("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/AE_tmax_2015.csv"), skip=6)
