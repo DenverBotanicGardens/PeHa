@@ -37,12 +37,9 @@ peha.climate <- rbind(ae_prism,dl_prism)
 peha.climate$Year <- substr(ae_prism$Date,1,4)
 peha.climate$Month <- substr(ae_prism$Date,6,7)
 
-head(peha.climate)
 peha.c <- peha.climate
 names(peha.c) <- c("Date","Precip","Tmin","Tmax","tmean","vpdmin","vpdmax","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
-
-head(peha.c)
 ```
 
 #Summary table from https://research.botanicgardens.org PeHa>Reports>Summary Table (csv)
@@ -50,14 +47,10 @@ head(peha.c)
 peha_summary <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha_",currentyr,"_summary.csv", sep=""))
 ```
 
-
 #PeHa>Reports>Raw Data
 ```{r}
 peha <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha",currentyr,".csv",sep=""))
-
-head(peha)
 ```
-
 
 
 ```{r, echo=FALSE}
@@ -65,7 +58,6 @@ ggplot(peha, aes(Year, X.ofRosettes)) +
   geom_bar(stat='identity') +
   facet_grid(~Site)
 ```
-
 
 
 ```{r, echo=FALSE}
