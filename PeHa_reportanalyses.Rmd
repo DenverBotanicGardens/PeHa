@@ -106,7 +106,6 @@ peha_m <- rbind(peha_m, c("Dry Lake",2012,9,0,0,0), c("Dry Lake",2012,28,0,0,0))
 peha_m[,c("TotRos","Fl","Br","Year")] <- lapply(peha_m[,c("TotRos","Fl","Br","Year")], as.numeric)
 
 peha_all <- merge(peha_m, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
-table(peha_all$Site,peha_all$Transect)
 ```
 
 
@@ -205,29 +204,23 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
 ```
 
 
-Average precipitation by month
-```{r}
-ggplot(peha_sumSEprecip, aes(Prev12, Precip, colour=Site)) +
-  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
-  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
-  geom_errorbar(aes(ymin=Precip-se, ymax=Precip+se),width=1, position = position_dodge(0.2)) +
-  theme_bw() +
-  ylab("Average monthly precipition (cm)") +
-  theme(legend.justification=c(0,1), legend.position=c(0,1))
-```
-
 ########START HERE
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
-ggplot(subset(peha_sumSEprecip, Prev12 < 2016), aes(Prev12, x, colour=Site)) +
+annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c, FUN = sum)
+avg.site <- aggregate(Precip~Site, FUN = mean, data = annual.precip[annual.precip$Prev12>1895,])
+
+ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
   ylab("Total 12 month precipition (mm)") +
   theme(legend.justification=c(0,0), legend.position=c(0,0))  +
+  xlab("Preceeding year (July-June)") +
+  geom_hline(yintercept = avg.site$Precip[1], col = "pink") +
+  geom_hline(yintercept = avg.site$Precip[2], col = "lightblue") +
   ggtitle("d)") +
   theme(plot.title=element_text(hjust=0))
-
 ```
 
 
@@ -242,15 +235,21 @@ peha.c[peha.c$Month>9 & peha.c$Month<13,"season"] <- "winter"
 peha.c[peha.c$Month>0 & peha.c$Month<4,"season"] <- "spring" 
 peha.c[peha.c$Month>3 & peha.c$Month<7,"season"] <- "summer" 
 
-peha.c.summary <- aggregate(peha.c[,2:4], peha.c[,c("Site","Prev12","season")], 
+peha.c.summary <- aggregate(list(peha.c$Tmax,peha.c$Tmin,
+                                 peha.c$vpdmax, peha.c$vpdmin), 
+                            peha.c[,c("Site","Prev12","season")], 
                             FUN = function(x) mean(x, na.rm = TRUE))
+peha.c.summary.prec <- aggregate(Precip~Site+Prev12+season, data =  peha.c, FUN = sum)
+
+peha.c.sum <- data.frame(peha.c.summary, Precip = peha.c.summary.prec$Precip)
 
 ```
 
 
-####Precip in Table 1
+####Precip in Table 1   
+this is seasonal averages (averaged over seasons over years)
 ```{r}
-summarySE(peha.c.summary, measurevar="Precip", groupvars=c("Site"))
+summarySE(peha.c.sum, measurevar="Precip", groupvars=c("Site"))
 ```
 
 
