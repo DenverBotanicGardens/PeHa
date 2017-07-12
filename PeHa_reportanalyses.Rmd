@@ -204,7 +204,6 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
 ```
 
 
-########START HERE
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
 annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c, FUN = sum)
@@ -249,13 +248,13 @@ peha.c.sum <- data.frame(peha.c.summary, Precip = peha.c.summary.prec$Precip)
 ####Precip in Table 1   
 this is seasonal averages (averaged over seasons over years)
 ```{r}
-summarySE(peha.c.sum, measurevar="Precip", groupvars=c("Site"))
+summarySE(annual.precip, measurevar="Precip", groupvars=c("Site"))
 ```
 
 
 Merge summary data with precipition data
 ```{r}
-peha.1 <- merge(peha_all, peha.c.summary, by.x=c("Site","Year"), by.y=c("Site","Prev12"))
+peha.1 <- merge(peha_all, peha.c.sum, by.x=c("Site","Year"), by.y=c("Site","Prev12"))
 ```
 
 
@@ -264,7 +263,9 @@ CountPVA
 
 CountPVA produces a list of two data frames, PVA and LM. PVA has the annual log growth rates and LM has the results of the linear model from Morris and Doak Population Viability Analysis
 ```{r}
-load(path.expand("Q:/Research/Stats & Software/R CODE/Functions/CountPVAFunction.R"))
+countdf <- aggregate(X.ofRosettes~Year+Site, data=peha, FUN = sum)
+
+
 ```
 
 ```{r}
