@@ -1,21 +1,13 @@
----
-title: "Peha_count_2"
-author: "Michelle DePrenger-Levin"
-date: "July 12, 2017"
-output: html_document
----
+#' @title CountPVA specific for PeHa
+#' @export
 
-Takes a dataframe with three columns: Site, Year, TotRos    
-Use only one site at a time
-
-```{r}
 CountPVA_peha <- function(dataframe){
   DL.table <- lapply(4:nrow(DL), function(yrs){
     y.count <- DL$X.ofRosettes[1:yrs]
     x.years <- DL$Year[1:yrs]
     ySpecies <- log10(y.count[-1]/y.count[-length(y.count)])
     yr <- sqrt(x.years[-1]-x.years[-length(x.years)])
-      
+    
     PVA.lm <- lm(ySpecies ~ -1 + yr)
     mu_sp <- predict(PVA.lm, level=0.95, interval = "confidence",
                      se.fit = TRUE)$fit[1,]
@@ -27,12 +19,12 @@ CountPVA_peha <- function(dataframe){
   DL.tab <- do.call(rbind, DL.table)
   DL.tab <- data.frame(Site = "Dry Lake", DL.tab)
   
-    AE.table <- lapply(4:nrow(AE), function(yrs){
+  AE.table <- lapply(4:nrow(AE), function(yrs){
     y.count <- AE$X.ofRosettes[1:yrs]
     x.years <- AE$Year[1:yrs]
     ySpecies <- log10(y.count[-1]/y.count[-length(y.count)])
     yr <- sqrt(x.years[-1]-x.years[-length(x.years)])
-      
+    
     PVA.lm <- lm(ySpecies ~ -1 + yr)
     mu_sp <- predict(PVA.lm, level=0.95, interval = "confidence",
                      se.fit = TRUE)$fit[1,]
@@ -45,7 +37,3 @@ CountPVA_peha <- function(dataframe){
   AE.tab <- data.frame(Site = "Above Eagle", AE.tab)
   list(AE.tab, DL.tab)
 }
-
-
-```
-
