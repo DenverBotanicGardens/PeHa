@@ -10,6 +10,7 @@ library(reshape2)
 library(grid)
 library(devtools)
 library(lattice)
+library(RCurl)
 ```
 
 Clear work environment
@@ -113,7 +114,7 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
     }
 
     # This does the summary. For each group's data frame, return a vector with
-    # N, mean, and sd
+    # N, mean, and sd9
     datac <- ddply(data, groupvars, .drop=.drop,
       .fun = function(xx, col) {
         c(N    = length2(xx[[col]], na.rm=na.rm),
@@ -148,6 +149,10 @@ peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
 peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
 
 peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
+
+annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c[peha.c$Year>1895,], FUN = sum)
+avg.site <- aggregate(Precip~Site, FUN = mean, data = annual.precip[annual.precip$Prev12>1895,])
+
 ```
 
 Add "a)" to each plot     
@@ -197,8 +202,6 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
 
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
-annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c, FUN = sum)
-avg.site <- aggregate(Precip~Site, FUN = mean, data = annual.precip[annual.precip$Prev12>1895,])
 
 ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
@@ -255,6 +258,9 @@ CountPVA
 CountPVA produces a list of two data frames, PVA and LM. PVA has the annual log growth rates and LM has the results of the linear model from Morris and Doak Population Viability Analysis
 ```{r}
 countdf <- aggregate(X.ofRosettes~Year+Site, data=peha, FUN = sum)
+
+#not sure this worked, Roxygen starts might mess it up maybe?
+source(url("https://raw.githubusercontent.com/DenverBotanicGardens/PeHa/master/PeHa_CountPVA.R"))
 
 # CountPVA_v2
 Site.list <- CountPVA_peha(countdf)

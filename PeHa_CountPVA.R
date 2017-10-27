@@ -2,6 +2,9 @@
 #' @export
 
 CountPVA_peha <- function(dataframe){
+  DL <- dataframe[dataframe$Site == "Dry Lake",]
+  AE <- dataframe[dataframe$Site == "Above Eagle",]
+  
   DL.table <- lapply(4:nrow(DL), function(yrs){
     y.count <- DL$X.ofRosettes[1:yrs]
     x.years <- DL$Year[1:yrs]
