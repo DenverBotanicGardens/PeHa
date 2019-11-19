@@ -13,8 +13,11 @@ library(lattice)
 library(RCurl)
 library(nlme)
 library(car)
+library(Rmisc)
 
 library(prism)
+currentYr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
+
 
 ```
 
@@ -151,46 +154,6 @@ peha_all <- merge(peha_vpd_temp_m,  peha_c, by.x = c("Site","Year"), by.y =c("Si
 ```
 
 
-summarySE function borrowed from <http://www.cookbook-r.com/Manipulating_data/Summarizing_data/>
-```{r}
-summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
-                      conf.interval=.95, .drop=TRUE) {
-    library(plyr)
-
-    # New version of length which can handle NA's: if na.rm==T, don't count them
-    length2 <- function (x, na.rm=FALSE) {
-        if (na.rm) sum(!is.na(x))
-        else       length(x)
-    }
-
-    # This does the summary. For each group's data frame, return a vector with
-    # N, mean, and sd9
-    datac <- ddply(data, groupvars, .drop=.drop,
-      .fun = function(xx, col) {
-        c(N    = length2(xx[[col]], na.rm=na.rm),
-          mean = mean   (xx[[col]], na.rm=na.rm),
-          sd   = sd     (xx[[col]], na.rm=na.rm)
-        )
-      },
-      measurevar
-    )
-
-    # Rename the "mean" column    
-    datac <- rename(datac, c("mean" = measurevar))
-
-    datac$se <- datac$sd / sqrt(datac$N)  # Calculate standard error of the mean
-
-    # Confidence interval multiplier for standard error
-    # Calculate t-statistic for confidence interval: 
-    # e.g., if conf.interval is .95, use .975 (above/below), and use df=N-1
-    ciMult <- qt(conf.interval/2 + .5, datac$N-1)
-    datac$ci <- datac$se * ciMult
-
-    return(datac)
-}
-```
-
-
 Add summary statistics to the peha table
 ```{r}
 peha_sumSE <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site","Year"))
@@ -210,13 +173,15 @@ Add "a)" to each plot
 Figure 1a) average rosettes per transect   
 700 x 450
 ```{r}
+
 ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   geom_errorbar(aes(ymin=TotRos-se, ymax=TotRos+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("Average rosettes per transect") +
-  theme(legend.justification=c(1,1), legend.position=c(1,1)) +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1)) +
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
 ```
@@ -230,7 +195,8 @@ ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   geom_errorbar(aes(ymin=Fl-se, ymax=Fl+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of reproductive individuals") +
-  theme(legend.justification=c(1,1), legend.position=c(1,1))+
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 ```
@@ -244,7 +210,8 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
   geom_errorbar(aes(ymin=Br-se, ymax=Br+se),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of individuals with herbivory") +
-  theme(legend.justification=c(1,0), legend.position=c(1,0)) +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,0), legend.position=c(1,0)) +
   ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
 ```
@@ -258,7 +225,8 @@ ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
   ylab("Total 12 month precipition (mm)") +
-  theme(legend.justification=c(0,0), legend.position=c(0,0))  +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1))  +
   xlab("Preceeding year (July-June)") +
   geom_hline(yintercept = avg.site$Precip[1], col = "pink") +
   geom_hline(yintercept = avg.site$Precip[2], col = "lightblue") +
@@ -278,13 +246,17 @@ peha.c[peha.c$Month>9 & peha.c$Month<13,"season"] <- "winter"
 peha.c[peha.c$Month>0 & peha.c$Month<4,"season"] <- "spring" 
 peha.c[peha.c$Month>3 & peha.c$Month<7,"season"] <- "summer" 
 
-peha.c.summary <- aggregate(list(peha.c$Tmax,peha.c$Tmin,
-                                 peha.c$vpdmax, peha.c$vpdmin), 
+# I added this earlier, don't really need again now but will make it cleaner  
+# peha.c has all PRISM climate data per month, designating the year for the previous 12 months (July-June), and monthly data
+peha.c.summary <- aggregate(peha.c[,c("Tmax","Tmin","vpdmax","vpdmin")], 
                             peha.c[,c("Site","Prev12","season")], 
                             FUN = function(x) mean(x, na.rm = TRUE))
 peha.c.summary.prec <- aggregate(Precip~Site+Prev12+season, data =  peha.c, FUN = sum)
 
-peha.c.sum <- data.frame(peha.c.summary, Precip = peha.c.summary.prec$Precip)
+peha.c.sum <- data.frame(peha.c.summary, Precip = peha.c.summary.prec[,"Precip"])
+
+# This has all same info except averaged over years (previous 12 months) instead of seasons and has demographic data
+peha_all
 
 ```
 
@@ -327,6 +299,8 @@ lamAE <- lapply(lambda.AE[,5:7], function(x) exp(x))
 
 Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
 ```{r}
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig3a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
 #Above Eagle
 ggplot(Site.list[[1]], aes(RangeEnd,exp(fit))) +
   geom_point() +
@@ -338,7 +312,12 @@ ggplot(Site.list[[1]], aes(RangeEnd,exp(fit))) +
   geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red")) +
   ggtitle("Above Eagle") +
-  geom_hline(aes(yintercept=1), colour = "darkgreen")
+  geom_hline(aes(yintercept=1), colour = "darkgreen")+
+  scale_x_continuous(breaks = seq(1995, currentYr, 4))
+
+dev.off()
+
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig3b_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
 #Dry Lake
 ggplot(Site.list[[2]], aes(RangeEnd,exp(fit))) +
@@ -351,13 +330,19 @@ ggplot(Site.list[[2]], aes(RangeEnd,exp(fit))) +
   geom_line(aes(RangeEnd,exp(lwr), colour = "red")) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red"))+
   ggtitle("Dry Lake") +
-  geom_hline(aes(yintercept=1), colour = "darkgreen")
+  geom_hline(aes(yintercept=1), colour = "darkgreen")+
+  scale_x_continuous(breaks = seq(1995, currentYr, 4))
 
+dev.off()
 ```
 
   
-Figure 3. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
-```{r}
+Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
+```{r} 
+
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
+
 ggplot(peha_all, aes(x, TotRos, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
@@ -369,6 +354,8 @@ ggplot(peha_all, aes(x, TotRos, colour = Site)) +
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
+
+dev.off()
 ```
 
 ```{r}
