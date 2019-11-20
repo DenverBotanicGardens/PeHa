@@ -40,13 +40,13 @@ first column is YYYY-MM and then data in metric
 One time to switch from downloading from the website to pulling from prism
 ```{r}
 currentyr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
-
-# Precipitation monthly
-get_prism_monthlys(type="ppt", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
-# Maximum temperature (average)
-get_prism_monthlys(type="tmax", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
-# Minimum temperature (average)
-get_prism_monthlys(type="tmin", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
+# 
+# # Precipitation monthly
+# get_prism_monthlys(type="ppt", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
+# # Maximum temperature (average)
+# get_prism_monthlys(type="tmax", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
+# # Minimum temperature (average)
+# get_prism_monthlys(type="tmin", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
 
 
 ```
@@ -102,6 +102,100 @@ peha_summary <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SP
 #PeHa>Reports>Raw Data
 ```{r}
 peha <- read.csv(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/peha",currentyr,".csv",sep=""))
+```
+
+Fruit information not in summary or raw output for 2017 or 2019
+Lost Fruit information. Need it both as total fruit counted and a yes or no if fruit produced
+```{r}
+'%ni%' <- Negate('%in%')
+library(dplyr)
+
+peha[peha$Year == 2019,] # is all missing Fruit
+
+# 2017
+peha2017fruit <- read.csv("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Raw Data/2017/20170621_DataForUpload.csv", skip=2)
+
+
+peha2017fruit <- peha2017fruit[peha2017fruit$X != "",]
+peha2017fruit <- peha2017fruit[peha2017fruit$Transect != "Transect",]
+peha2017fruit <- peha2017fruit %>% filter(Site != "Site") %>% droplevels()
+
+peha2017fruit[,c(2:9)] <- lapply(peha2017fruit[,c(2:9)], function(x) as.numeric(as.character(x)))
+peha2017fruit[,c(1,10)] <- lapply(peha2017fruit[,c(1,10)], function(x) as.character(x))
+str(peha2017fruit)
+nrow(peha[peha$Year == 2017,]) # 503
+nrow(peha2017fruit) # 503
+
+# 2019
+peha2019fruit <- read.csv("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Raw Data/2019/EnteredRawData_MaeveWilder_2019.csv", skip=2)
+
+peha2019fruit <- peha2019fruit[peha2019fruit$X != "",]
+# peha2019fruit <- peha2019fruit[peha2019fruit$Transect != "Transect",]
+peha2019fruit <- peha2019fruit %>% filter(Site != "Site") %>% droplevels()
+peha2019fruit <- peha2019fruit %>% filter(Transect != "Transect") %>% droplevels()
+
+peha2019fruit[,c(2:9)] <- lapply(peha2019fruit[,c(2:9)], function(x) as.numeric(as.character(x)))
+peha2019fruit[,c(1,10)] <- lapply(peha2019fruit[,c(1,10)], function(x) as.character(x))
+str(peha2017fruit)
+
+nrow(peha[peha$Year == 2019,]) # 696
+nrow(peha2019fruit) # 696
+
+table(peha2019fruit$Transect[peha2019fruit$Site == "Above Eagle"])
+
+peha2017fruit$Year <- 2017
+peha2019fruit$Year <- 2019
+pehafruit <- rbind(peha2017fruit, peha2019fruit)
+nrow(pehafruit) # 1199
+table(pehafruit$Site, pehafruit$Transect, pehafruit$Year)
+
+
+# pehafruit matchs but after the merge Above Eagle transect 17 is lost and results assigned elsewhere
+peha.foo <- merge(peha, pehafruit[,c("Site","Year","Transect","X","Y","X..of.Rosettes",
+                   "flowered..br....0.or.1.","X.Fr.Fl")], # removes transect id and browsed
+                  by.x = c("Site","Year","Transect","X","Y","X.ofRosettes","Fl"),
+                  by.y = c("Site","Year","Transect","X","Y","X..of.Rosettes","flowered..br....0.or.1."),
+                  all.x = TRUE)
+# peha.foo <- merge(peha, pehafruit[,c("Site","Year","Transect","X","Y","X..of.Rosettes",
+#                                      "flowered..br....0.or.1.","X.Fr.Fl")], 
+#                   by = c("Site","Year","Transect","X","Y"),
+#                   all.x = TRUE)
+peha.foo$X.Fr.Fl <- as.numeric(as.character(peha.foo$X.Fr.Fl))
+
+table(peha.foo$Site)
+table(peha$Site) # the additional are in Above Eagle
+
+table(peha.foo$Year)
+table(peha$Year) # the additional are in Above Eagle, 2019
+
+table(pehafruit$Site, pehafruit$Transect, pehafruit$Year)
+
+table(peha.foo$Transect[peha$Site == "Above Eagle" & peha$Year == 2019])
+table(peha$Transect[peha$Site == "Above Eagle" & peha$Year == 2019]) # the additional are in Above Eagle, 2019, peha.foo lost transect 17 and assigned a bunch to other transects! 
+
+nrow(peha.foo) # 13615
+nrow(peha)     # 13613
+
+peha.foo$Fr_Fl <- rowSums(peha.foo[,c("Fr_Fl","X.Fr.Fl")], na.rm=TRUE)
+
+peha.foo[peha.foo$Year > 2016,]
+peha.foo <- peha.foo[,-length(peha.foo)]
+
+# Just this time before it gets fixed
+identical(peha.foo %>% arrange(Site, Year, Transect, X, Y, X.ofRosettes) , 
+peha %>% arrange(Site, Year, Transect, X, Y, X.ofRosettes) )
+
+peha[peha$Year==2019 & peha$Transect == 17,] %>% arrange(Site, Year, Transect, Y) %>% select(1:9)
+peha.foo[peha.foo$Year==2019 & peha.foo$Transect == 17,] %>% arrange(Site, Year, Transect, Y) %>% select(1:9)
+
+
+setdiff(peha.foo, peha) # 1201 are different; there are 1199 2017 and 2019 rows; still 2 additional rows
+intersect(peha.foo[,1:7],peha[,1:7]) # 13597, missing 16 rows
+setdiff(peha.foo[,1:7],peha[,1:7]) # All are the same
+
+# Not yet! They are different, garrrr
+# peha <- peha.foo
+
 ```
 
 
@@ -174,7 +268,7 @@ Figure 1a) average rosettes per transect
 700 x 450
 ```{r}
 
-ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
+Fig2a <- ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   geom_errorbar(aes(ymin=TotRos-se, ymax=TotRos+se),width=1, position = position_dodge(0.1)) +
@@ -184,12 +278,21 @@ ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
         legend.justification=c(1,1), legend.position=c(1,1)) +
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
+
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2a_rossets.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
+Fig2a
+
+
+dev.off()
 ```
 
 
 Figure 1b) percent of indivdiuals that are flowering or fruiting
 ```{r}
-ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2b_percentrep.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
+Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   geom_errorbar(aes(ymin=Fl-se, ymax=Fl+se),width=1, position = position_dodge(0.1)) +
@@ -199,12 +302,18 @@ ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
         legend.justification=c(1,1), legend.position=c(1,1))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
+
+Fig2b
+
+dev.off()
 ```
 
 
 Figure 1c) percent of indivdiuals with herbivory
 ```{r}
-ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2c_herbivory.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
+Fig2c <- ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   geom_errorbar(aes(ymin=Br-se, ymax=Br+se),width=1, position = position_dodge(0.1)) +
@@ -214,24 +323,44 @@ ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
         legend.justification=c(1,0), legend.position=c(1,0)) +
   ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
+
+Fig2c
+
+dev.off()
 ```
 
 
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2d_precip.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
-ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
+
+Fig2d <- ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
   ylab("Total 12 month precipition (mm)") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,1), legend.position=c(1,1))  +
+        legend.justification=c(0,0), legend.position=c(0,0))  +
   xlab("Preceeding year (July-June)") +
   geom_hline(yintercept = avg.site$Precip[1], col = "pink") +
   geom_hline(yintercept = avg.site$Precip[2], col = "lightblue") +
   ggtitle("d)") +
   theme(plot.title=element_text(hjust=0))
+
+Fig2d
+
+dev.off()
+```
+
+```{r}
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2.jpg", sep=""), width=400, height=275, units="mm", res=300)
+
+
+multiplot(Fig2a, Fig2b, Fig2c, Fig2d, cols=2)
+
+dev.off()
+
 ```
 
 
@@ -340,10 +469,7 @@ dev.off()
 Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
 ```{r} 
 
-jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
-
-
-ggplot(peha_all, aes(x, TotRos, colour = Site)) +
+Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
@@ -355,11 +481,15 @@ ggplot(peha_all, aes(x, TotRos, colour = Site)) +
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
 
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
+Fig4a
+
 dev.off()
 ```
 
 ```{r}
-ggplot(peha_all, aes(x, Fl, colour = Site)) +
+Fig4b <- ggplot(peha_all, aes(x, Fl, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
@@ -373,7 +503,7 @@ ggplot(peha_all, aes(x, Fl, colour = Site)) +
 ```
 
 ```{r}
-ggplot(peha_all, aes(x, Br, colour = Site)) +
+Fig4c <- ggplot(peha_all, aes(x, Br, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
@@ -386,6 +516,17 @@ ggplot(peha_all, aes(x, Br, colour = Site)) +
   theme(plot.title=element_text(hjust=0))
 ```
  
+```{r}
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4.jpg", sep=""), width=250, height=400, units="mm", res=300)
+
+
+multiplot(Fig4a, Fig4b, Fig4c,cols=1)
+
+
+dev.off()
+
+
+```
  
 
 # add a subject unique identifier row      
@@ -506,6 +647,7 @@ ggplot(peha_all, aes(Year, TotRos, colour = Site)) +
   theme_bw()
 
 ```
+
 
 ###Appendix    
 
