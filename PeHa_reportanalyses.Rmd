@@ -167,6 +167,8 @@ peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
 annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c[peha.c$Year>1895,], FUN = sum)
 avg.site <- aggregate(Precip~Site, FUN = mean, data = annual.precip[annual.precip$Prev12>1895,])
 
+# Table 1
+summarySE(peha_all, measurevar="TotRos", groupvars="Site")
 ```
 
 Add "a)" to each plot     
@@ -197,7 +199,6 @@ dev.off()
 
 Figure 1b) percent of indivdiuals that are flowering or fruiting
 ```{r}
-jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2b_percentrep.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
 Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
@@ -209,6 +210,9 @@ Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
         legend.justification=c(1,1), legend.position=c(1,1))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
+
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2b_percentrep.jpg", sep=""), width=175, height=125, units="mm", res=300)
+
 
 Fig2b
 
@@ -297,7 +301,7 @@ peha_all
 ```
 
 
-####Precip in Table 1   
+####Precip in Table 1 and Figure 2   
 this is seasonal averages (averaged over seasons over years)
 ```{r}
 summarySE(annual.precip, measurevar="Precip", groupvars=c("Site"))
@@ -349,7 +353,7 @@ ggplot(Site.list[[1]], aes(RangeEnd,exp(fit))) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red")) +
   ggtitle("Above Eagle") +
   geom_hline(aes(yintercept=1), colour = "darkgreen")+
-  scale_x_continuous(breaks = seq(1995, currentYr, 4))
+  scale_x_continuous(breaks = seq(1995, currentyr, 4))
 
 dev.off()
 
@@ -367,7 +371,7 @@ ggplot(Site.list[[2]], aes(RangeEnd,exp(fit))) +
   geom_line(aes(RangeEnd,exp(upr),colour = "red"))+
   ggtitle("Dry Lake") +
   geom_hline(aes(yintercept=1), colour = "darkgreen")+
-  scale_x_continuous(breaks = seq(1995, currentYr, 4))
+  scale_x_continuous(breaks = seq(1995, currentyr, 4))
 
 dev.off()
 ```
@@ -376,13 +380,14 @@ dev.off()
 Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
 ```{r} 
 
-Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
+Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
   ylab(expression(paste("Average rosettes per 60m"^2))) +
+  xlab("Maximum Temperature")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("a)") +
@@ -395,21 +400,35 @@ Fig4a
 dev.off()
 ```
 
+
 ```{r}
-Fig4b <- ggplot(peha_all, aes(x, Fl, colour = Site)) +
+Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab(expression(paste("Average rosettes per 60m"^2))) +
+  xlab("Maximum water vapor deficit")+
+  theme(legend.justification=c(0,1), legend.position=c(0,1),
+        legend.background = element_rect(fill=alpha('white', 0.1)))+
+  ggtitle("a)") +
+  theme(plot.title=element_text(hjust=0))
+
+Fig4b <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
   ylab("% reproductive individuals") +
+  xlab("Maximum Temperature")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
-```
 
-```{r}
+
 Fig4c <- ggplot(peha_all, aes(x, Br, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
@@ -424,10 +443,10 @@ Fig4c <- ggplot(peha_all, aes(x, Br, colour = Site)) +
 ```
  
 ```{r}
-jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4.jpg", sep=""), width=250, height=400, units="mm", res=300)
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4.jpg", sep=""), width=250, height=500, units="mm", res=300)
 
 
-multiplot(Fig4a, Fig4b, Fig4c,cols=1)
+multiplot(Fig4a, Fig4a_2, Fig4b, Fig4c,cols=1)
 
 
 dev.off()
@@ -490,10 +509,20 @@ random argulment set to ~1|<group structure> gives a random intercept for each g
 Can use weights argument to model non-constant variance within or between gorups     
 coorelation argument to model non-constant covariance   
 model random slopes by adding terms to the LHS of the | in the random formula
+
 ```{r}
 #no assumption of compound symmetry
 anova(lme(TotRos ~ Site*Year, random=~1|subject, method="ML", data = peha_all))
 
+lmr1 <- lmer(TotRos ~ (Site*Year)|Transect, peha_all)
+summary(lmr1) 
+# fixed effect is grand mean of TotRos, random effect would be the residuals around the transects??
+
+lmr2 <- lmer(TotRos ~ Year|Site, peha_all)
+summary(lmr2) 
+# fixed effect is grand mean of TotRos,
+
+plot(TotRos~Year, data=peha_all)
 
 anova(lme(log(TotRos+1) ~ Site*Year, random=~1|subject, method="ML", data = peha_all))
 
@@ -504,9 +533,10 @@ anova(lme(asin(sqrt(Br)) ~ Site*Year, random=~1|subject, method="ML", data = peh
 
 #failed?!
 #assume compound symmetry
-anova(lme(log(TotRos+1) ~ Year, random=~1|Site, 
+anova1 <-anova(lme(log(TotRos+1) ~ Year, random=~1|Site, 
           correlation=corCompSymm(form=~1|Site), 
           method="ML", data = peha_all))
+
 
 #failed for Site?
 #model random slopes, makes sense to allow the two sites to slope differnt from each other
@@ -520,6 +550,8 @@ anova(lme(TotRos~Year,
 
 library(lme4)
 summary(lmer(TotRos~Year+(Site|Year), data=peha_all))
+
+summary(lmer(TotRos~Year+Site|Transect, data=peha_all))
 
 #Wonder about each population seperately? Really should test for differences between sites since climate things are mostly the same (year as that lumping factor) 
 #Dry lake
@@ -540,6 +572,7 @@ Population fluctuations
 Above Eagle is significantly decreasing while Dry Lake is stable - looks like no, they are both signficantly decreasing?
 ```{r}
 summary(lm(log(TotRos+1)~Year*Site, data=peha_all))
+summary(lm(TotRos~Year*Site, data=peha_all))
 
 ggplot(peha_all, aes( Year, log(TotRos+1), colour = Site)) +
   geom_point() +
@@ -577,7 +610,7 @@ Appendix.totals <- lapply(Appendix.list, function(x) rbind(x,colSums(x)))
 Appendix <- do.call(rbind, Appendix.totals)
 write.csv(Appendix, file=paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/",currentyr,"Appendix.csv", sep=""))
 
-#Summary
+#Summary I think this is an old version of summarySE, plus total rosettes
 avg.se.app <- lapply(Appendix.list, function(x){
   data.frame(total = sum(x$Rosettes, na.rm = TRUE),
              average = mean(x$Rosettes, na.rm = TRUE),
@@ -603,10 +636,100 @@ ae.app[which(ae.app$total == min(ae.app$total)),]
 dl.app[grep(paste(currentyr),dl.app$Site),]
 ae.app[grep(paste(currentyr),ae.app$Site),]
 
-# Average rosettes per year over study
+# Average rosettes per year over study per site (not per transect)
 mean(dl.app$total)
 mean(ae.app$total)
 
+
+```
+
+# peha_all$x is precipitation
+```{r}
+
+require(AICcmodavg)
+
+
+lm1 <- lm(TotRos ~ Site*Tmin, peha_all)
+lm2 <- lm(TotRos ~ Site*Tmax, peha_all)
+lm3 <- lm(TotRos ~ Site*vpdmax, peha_all) # how much vapor deficit
+lm4 <- lm(TotRos ~ Site*x, peha_all) # x is precipitation
+lm5 <- lm(TotRos ~ Tmin, peha_all)
+lm6 <- lm(TotRos ~ Tmax, peha_all)
+lm7 <- lm(TotRos ~ x, peha_all)
+lm8 <- lm(TotRos ~ vpdmax, peha_all)
+lm9 <- lm(TotRos ~ 1, peha_all)
+
+
+lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
+lm.names <- as.character(unlist(lapply(lm.list,formula)))
+(lm.results <- aictab(lm.list, modnames=lm.names))
+#evidence ratio 
+for(i in 2:length(lm.list)){
+  print(exp(0.5*lm.results$Delta_AICc[i]))
+}
+```
+
+```{r}
+
+require(AICcmodavg)
+
+
+lm1 <- lm(Fl ~ Site*Tmin, peha_all)
+lm2 <- lm(Fl ~ Site*Tmax, peha_all)
+lm3 <- lm(Fl ~ Site*vpdmax, peha_all) # how much vapor deficit
+lm4 <- lm(Fl ~ Site*x, peha_all) # x is precipitation
+lm5 <- lm(Fl ~ Tmin, peha_all)
+lm6 <- lm(Fl ~ Tmax, peha_all)
+lm7 <- lm(Fl ~ x, peha_all)
+lm8 <- lm(Fl ~ vpdmax, peha_all)
+lm9 <- lm(Fl ~ 1, peha_all)
+
+
+lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
+lm.names <- as.character(unlist(lapply(lm.list,formula)))
+(lm.results <- aictab(lm.list, modnames=lm.names))
+#evidence ratio 
+for(i in 2:length(lm.list)){
+  print(exp(0.5*lm.results$Delta_AICc[i]))
+}
+```
+
+```{r}
+
+
+lm1 <- lm(Br ~ Site*Tmin, peha_all)
+lm2 <- lm(Br ~ Site*Tmax, peha_all)
+lm3 <- lm(Br ~ Site*vpdmax, peha_all) # how much vapor deficit
+lm4 <- lm(Br ~ Site*x, peha_all) # x is precipitation
+lm5 <- lm(Br ~ Tmin, peha_all)
+lm6 <- lm(Br ~ Tmax, peha_all)
+lm7 <- lm(Br ~ x, peha_all)
+lm8 <- lm(Br ~ vpdmax, peha_all)
+lm9 <- lm(Br ~ 1, peha_all)
+
+
+lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
+lm.names <- as.character(unlist(lapply(lm.list,formula)))
+(lm.results <- aictab(lm.list, modnames=lm.names))
+#evidence ratio 
+for(i in 2:length(lm.list)){
+  print(exp(0.5*lm.results$Delta_AICc[i]))
+}
+```
+
+
+```{r}
+ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab(expression(paste("Average rosettes per 60m"^2))) +
+  theme(legend.justification=c(0,1), legend.position=c(0,1),
+        legend.background = element_rect(fill=alpha('white', 0.1)))+
+  ggtitle("a)") +
+  theme(plot.title=element_text(hjust=0))
 
 ```
 
