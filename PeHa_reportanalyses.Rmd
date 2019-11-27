@@ -240,7 +240,7 @@ Fig2c
 dev.off()
 ```
 
-
+Precipitation not most important
 Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 ```{r}
 jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2d_precip.jpg", sep=""), width=175, height=125, units="mm", res=300)
@@ -265,10 +265,52 @@ dev.off()
 ```
 
 ```{r}
-jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2.jpg", sep=""), width=400, height=275, units="mm", res=300)
+fig2d_vpdmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, vpdmax, colour=Site)) +
+  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
+  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
+  theme_bw() +
+  ylab("Average maximum water vapor pressure deficit") +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1))  +
+  xlab("Preceeding year (July-June)") +
+  geom_hline(yintercept = mean(peha_all$vpdmax[peha_all$Site=="Above Eagle"]), col = "pink") +
+  geom_hline(yintercept = mean(peha_all$vpdmax[peha_all$Site=="Dry Lake"]), col = "lightblue") +
+  ggtitle("e)") +
+  theme(plot.title=element_text(hjust=0))
+
+fig2d_tmin <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, Tmin, colour=Site)) +
+  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
+  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
+  theme_bw() +
+  ylab("Average minimum temperature") +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1))  +
+  xlab("Preceeding year (July-June)") +
+  geom_hline(yintercept = mean(peha_all$Tmin[peha_all$Site=="Above Eagle"]), col = "pink") +
+  geom_hline(yintercept = mean(peha_all$Tmin[peha_all$Site=="Dry Lake"]), col = "lightblue") +
+  ggtitle("f)") +
+  theme(plot.title=element_text(hjust=0))
+
+fig2d_tmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, Tmax, colour=Site)) +
+  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
+  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
+  theme_bw() +
+  ylab("Average maximum temperature") +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,1), legend.position=c(1,1))  +
+  xlab("Preceeding year (July-June)") +
+  geom_hline(yintercept = mean(peha_all$Tmax[peha_all$Site=="Above Eagle"]), col = "pink") +
+  geom_hline(yintercept = mean(peha_all$Tmax[peha_all$Site=="Dry Lake"]), col = "lightblue") +
+  ggtitle("g)") +
+  theme(plot.title=element_text(hjust=0))
+```
+
+```{r}
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig2.jpg", sep=""), width=300, height=400, units="mm", res=300)
 
 
-multiplot(Fig2a, Fig2b, Fig2c, Fig2d, cols=2)
+multiplot(Fig2a, Fig2b, Fig2c, Fig2d, fig2d_vpdmax,fig2d_tmin,fig2d_tmax, 
+          layout = matrix(1:8, nrow=4,ncol=2, byrow = TRUE))
 
 dev.off()
 
@@ -409,10 +451,10 @@ Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
   theme_bw() +
   xlab("") +
   ylab(expression(paste("Average rosettes per 60m"^2))) +
-  xlab("Maximum water vapor deficit")+
+  xlab("Maximum vapor pressure deficit")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("a)") +
+  ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
 Fig4b <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
@@ -425,7 +467,7 @@ Fig4b <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
   xlab("Maximum Temperature")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("b)") +
+  ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
 
 
@@ -434,16 +476,16 @@ Fig4c <- ggplot(peha_all, aes(x, Br, colour = Site)) +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
-  xlab("Annual precipitation (mm)") +
+  xlab("Maximum vapor pressure deficit") +
   ylab("% of individuals with herbivory") +
   theme(legend.justification=c(0,0), legend.position=c(0,0),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("c)") +
+  ggtitle("d)") +
   theme(plot.title=element_text(hjust=0))
 ```
  
 ```{r}
-jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4.jpg", sep=""), width=250, height=500, units="mm", res=300)
+jpeg(paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/Reports/Word ",currentyr, "_PeHa/Fig4.jpg", sep=""), width=250, height=370, units="mm", res=300)
 
 
 multiplot(Fig4a, Fig4a_2, Fig4b, Fig4c,cols=1)
@@ -588,8 +630,9 @@ ggplot(peha_all, aes(Year, TotRos, colour = Site)) +
 
 ```
 
-
-###Appendix    
+# START HERE##
+###Appendix     
+Starting in 2012 it changed and no longer gives the number that have fruit but the total number of fruit. Should go back and fix all previous years despite counting fruit strangely. Maybe add fruit into the calculations and regressions. 
 
 ```{r}
 
@@ -643,6 +686,20 @@ mean(ae.app$total)
 
 ```
 
+
+Get number of individuals with any fruit rather than the number of fruit that the output was swtiched to in 2012 (after 2012)
+```{r}
+
+table(peha$Year[peha$Fr_Fl>0],peha$Transect[peha$Fr_Fl>0])
+
+numfruit <- lapply(split(peha, peha$Site), function(site){
+  table(site$Transect[site$Fr_Fl>0],site$Year[site$Fr_Fl>0])
+})
+
+```
+
+
+
 # peha_all$x is precipitation
 ```{r}
 
@@ -667,6 +724,10 @@ lm.names <- as.character(unlist(lapply(lm.list,formula)))
 for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
+
+levels(peha_all$Site)
+summary(lm2)
+summary(lm3)
 ```
 
 ```{r}
@@ -692,6 +753,8 @@ lm.names <- as.character(unlist(lapply(lm.list,formula)))
 for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
+
+summary(lm2)
 ```
 
 ```{r}
@@ -715,6 +778,9 @@ lm.names <- as.character(unlist(lapply(lm.list,formula)))
 for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
+
+summary(lm8)
+summary(lm3)
 ```
 
 
