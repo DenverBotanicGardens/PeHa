@@ -298,13 +298,12 @@ fig2d_tmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, Tmax, colour=Site)
 ```
 
 ```{r}
-ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig2a"))
-Fig2a
+ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig2.jpg", sep=""),
+ 
+       Fig2a + Fig2b + Fig2c + Fig2d + fig2e_vpdmax + fig2f_tmin + fig2d_tmax + plot_layout(ncol = 2),
+       
+     units = "mm", dpi = 300, height = 400, width = 300)   
 
-multiplot(Fig2a, Fig2b, Fig2c, Fig2d, fig2d_vpdmax,fig2d_tmin,fig2d_tmax, 
-          layout = matrix(1:8, nrow=4,ncol=2, byrow = TRUE))
-
-dev.off()
 
 ```
 
@@ -373,7 +372,7 @@ lamAE <- lapply(lambda.AE[,5:7], function(x) exp(x))
 
 Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
 ```{r}
-jpeg(paste("C:/Users/beatrice.lincke/Denver Botanic Gardens/Conservation - Penstemon-harringtonii/2021_Penstemon-harringtonii_Fig3a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
+jpeg(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig3a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
 #Above Eagle
 ggplot(Site.list[[1]], aes(RangeEnd,exp(fit))) +
@@ -391,7 +390,7 @@ ggplot(Site.list[[1]], aes(RangeEnd,exp(fit))) +
 
 dev.off()
 
-jpeg(paste("C:/Users/beatrice.lincke/Denver Botanic Gardens/Conservation - Penstemon-harringtonii/2021_Penstemon-harringtonii_Fig3b_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
+jpeg(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig3b_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
 #Dry Lake
 ggplot(Site.list[[2]], aes(RangeEnd,exp(fit))) +
@@ -413,10 +412,10 @@ dev.off()
   
 Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
 ```{r} 
-
+# Rosettes is maxtemp
 Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
   geom_point() +
-  geom_smooth(method ="lm") +
+  geom_smooth(method ="glm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
@@ -427,29 +426,47 @@ Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
 
-jpeg(paste("C:/Users/beatrice.lincke/Denver Botanic Gardens/Conservation - Penstemon-harringtonii/2021_Penstemon-harringtonii_Fig4a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
-
-Fig4a
-
-dev.off()
-```
-
-
-```{r}
-Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
+# Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
+#   geom_point() +
+#   geom_smooth(method ="lm") +
+#   scale_color_manual(values = c("black","red")) +
+#   theme_bw() +
+#   xlab("") +
+#   ylab(expression(paste("Average rosettes per 60m"^2))) +
+#   xlab("Maximum vapor pressure deficit")+
+#   theme(legend.justification=c(0,1), legend.position=c(0,1),
+#         legend.background = element_rect(fill=alpha('white', 0.1)))+
+#   ggtitle("b)") +
+#   theme(plot.title=element_text(hjust=0))
+# 
+Fig4b1 <- ggplot(peha_all, aes(x, Fl)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
-  ylab(expression(paste("Average rosettes per 60m"^2))) +
-  xlab("Maximum vapor pressure deficit")+
+  ylab("% reproductive individuals") +
+  xlab("Precipitation")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
-Fig4b <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
+Fig4b2 <- ggplot(peha_all, aes(Tmin, Fl, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="lm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab("% reproductive individuals") +
+  xlab("Minimum Temperature")+
+  theme(legend.justification=c(0,1), legend.position=c(0,1),
+        legend.background = element_rect(fill=alpha('white', 0.1)))+
+  # ggtitle("c)") +
+  theme(plot.title=element_text(hjust=0))
+
+
+Fig4b3 <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
   geom_point() +
   geom_smooth(method ="lm") +
   scale_color_manual(values = c("black","red")) +
@@ -459,31 +476,35 @@ Fig4b <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
   xlab("Maximum Temperature")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("c)") +
+  # ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
 
 
-Fig4c <- ggplot(peha_all, aes(x, Br, colour = Site)) +
+Fig4c <- ggplot(peha_all, aes(vpdmax, Br))+ #, colour = Site)) +
   geom_point() +
-  geom_smooth(method ="lm") +
+  geom_smooth(method ="glm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("Maximum vapor pressure deficit") +
   ylab("% of individuals with herbivory") +
   theme(legend.justification=c(0,0), legend.position=c(0,0),
-        legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("d)") +
+        legend.background = element_rect(fill=alpha('white', 0.5)))+
+  ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
 ```
  
 ```{r}
-jpeg(paste("C:/Users/beatrice.lincke/Denver Botanic Gardens/Conservation - Penstemon-harringtonii/2021_Penstemon-harringtonii_Fig4.jpg", sep=""), width=250, height=370, units="mm", res=300)
+ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig4.jpg", sep=""),
+       
+       (Fig4a + plot_spacer() + plot_spacer())/
+         (Fig4b1 + Fig4b2 + Fig4b3)/
+         (Fig4c+ plot_spacer() + plot_spacer()),
+
+       width=325, height=325, units="mm", dpi=300)
 
 
-multiplot(Fig4a, Fig4a_2, Fig4b, Fig4c,cols=1)
 
 
-dev.off()
 
 
 ```
@@ -643,7 +664,7 @@ Appendix.list <- lapply(split(peha, list(peha$Site,peha$Year)),
 Appendix.totals <- lapply(Appendix.list, function(x) rbind(x,colSums(x)))
 
 Appendix <- do.call(rbind, Appendix.totals)
-write.csv(Appendix, file=paste("Q:/Research/All_Projects_by_Species/Penstemon SPECIES/Penstemon_harringtonii/R_code_PeHa/R_tables/",currentyr,"Appendix.csv", sep=""))
+write.csv(Appendix, file=paste(userpath,currentyr,"Appendix.csv", sep=""))
 
 #Summary I think this is an old version of summarySE, plus total rosettes
 avg.se.app <- lapply(Appendix.list, function(x){
@@ -698,15 +719,25 @@ numfruit <- lapply(split(peha, peha$Site), function(site){
 require(AICcmodavg)
 
 
-lm1 <- lm(TotRos ~ Site*Tmin, peha_all)
-lm2 <- lm(TotRos ~ Site*Tmax, peha_all)
-lm3 <- lm(TotRos ~ Site*vpdmax, peha_all) # how much vapor deficit
-lm4 <- lm(TotRos ~ Site*x, peha_all) # x is precipitation
-lm5 <- lm(TotRos ~ Tmin, peha_all)
-lm6 <- lm(TotRos ~ Tmax, peha_all)
-lm7 <- lm(TotRos ~ x, peha_all)
-lm8 <- lm(TotRos ~ vpdmax, peha_all)
-lm9 <- lm(TotRos ~ 1, peha_all)
+# lm1 <- lm(TotRos ~ Site*Tmin, peha_all)
+# lm2 <- lm(TotRos ~ Site*Tmax, peha_all)
+# lm3 <- lm(TotRos ~ Site*vpdmax, peha_all) # how much vapor deficit
+# lm4 <- lm(TotRos ~ Site*x, peha_all) # x is precipitation
+# lm5 <- lm(TotRos ~ Tmin, peha_all)
+# lm6 <- lm(TotRos ~ Tmax, peha_all)
+# lm7 <- lm(TotRos ~ x, peha_all)
+# lm8 <- lm(TotRos ~ vpdmax, peha_all)
+# lm9 <- lm(TotRos ~ 1, peha_all)
+
+lm1 <- glm(TotRos ~ Site*Tmin, family = poisson, peha_all)
+lm2 <- glm(TotRos ~ Site*Tmax, family = poisson,peha_all)
+lm3 <- glm(TotRos ~ Site*vpdmax, family = poisson,peha_all) # how much vapor deficit
+lm4 <- glm(TotRos ~ Site*x, family = poisson,peha_all) # x is precipitation
+lm5 <- glm(TotRos ~ Tmin, family = poisson,peha_all)
+lm6 <- glm(TotRos ~ Tmax, family = poisson,peha_all)
+lm7 <- glm(TotRos ~ x,family = poisson, peha_all)
+lm8 <- glm(TotRos ~ vpdmax,family = poisson, peha_all)
+lm9 <- glm(TotRos ~ 1, family = poisson,peha_all)
 
 
 lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
@@ -722,20 +753,43 @@ summary(lm2)
 summary(lm3)
 ```
 
+# percent reproductive should be a beta - binomial(link = "logit")
+<https://m-clark.github.io/posts/2019-08-20-fractional-regression/>   
+Binomial logisic for binary and count/proportional data   
+    - with logistic link the coefficients can be exponentiated for odds ratios    
+    - Standard binomial likelihood as would use for binary or count/proportional data   
+    - y is target variable - ignore the warning that glm(rate ~ beta + beta.., family = binomial) non-integer. Std.errors will be wrong   
+    - use quasibinomial and the standard errors should be pretty close
+    
+Beta regression for (0,1) between but not including 0 and 1: (see betareg, DirichletReg, mgcv, brms)
+Zero/one-inflated binomial or beta regression with lots of zeros and ones (brms, VGAM, gamlss)   
+
+
 ```{r}
+library(lmtest)
+library(sandwich)
+# require(AICcmodavg)
 
-require(AICcmodavg)
 
+# lm1 <- lm(Fl ~ Site*Tmin, peha_all)
+# lm2 <- lm(Fl ~ Site*Tmax, peha_all)
+# lm3 <- lm(Fl ~ Site*vpdmax, peha_all) # how much vapor deficit
+# lm4 <- lm(Fl ~ Site*x, peha_all) # x is precipitation
+# lm5 <- lm(Fl ~ Tmin, peha_all)
+# lm6 <- lm(Fl ~ Tmax, peha_all)
+# lm7 <- lm(Fl ~ x, peha_all)
+# lm8 <- lm(Fl ~ vpdmax, peha_all)
+# lm9 <- lm(Fl ~ 1, peha_all)
+lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_all)
+lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_all)
+lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_all) # how much vapor deficit
+lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
+lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_all)
+lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_all)
+lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_all)
+lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_all)
+lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_all)
 
-lm1 <- lm(Fl ~ Site*Tmin, peha_all)
-lm2 <- lm(Fl ~ Site*Tmax, peha_all)
-lm3 <- lm(Fl ~ Site*vpdmax, peha_all) # how much vapor deficit
-lm4 <- lm(Fl ~ Site*x, peha_all) # x is precipitation
-lm5 <- lm(Fl ~ Tmin, peha_all)
-lm6 <- lm(Fl ~ Tmax, peha_all)
-lm7 <- lm(Fl ~ x, peha_all)
-lm8 <- lm(Fl ~ vpdmax, peha_all)
-lm9 <- lm(Fl ~ 1, peha_all)
 
 
 lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
@@ -752,15 +806,15 @@ summary(lm2)
 ```{r}
 
 
-lm1 <- lm(Br ~ Site*Tmin, peha_all)
-lm2 <- lm(Br ~ Site*Tmax, peha_all)
-lm3 <- lm(Br ~ Site*vpdmax, peha_all) # how much vapor deficit
-lm4 <- lm(Br ~ Site*x, peha_all) # x is precipitation
-lm5 <- lm(Br ~ Tmin, peha_all)
-lm6 <- lm(Br ~ Tmax, peha_all)
-lm7 <- lm(Br ~ x, peha_all)
-lm8 <- lm(Br ~ vpdmax, peha_all)
-lm9 <- lm(Br ~ 1, peha_all)
+lm1 <- glm(Br ~ Site*Tmin, family = binomial(link = "logit"),peha_all)
+lm2 <- glm(Br ~ Site*Tmax,family = binomial(link = "logit"), peha_all)
+lm3 <- glm(Br ~ Site*vpdmax,family = binomial(link = "logit"), peha_all) # how much vapor deficit
+lm4 <- glm(Br ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
+lm5 <- glm(Br ~ Tmin,family = binomial(link = "logit"), peha_all)
+lm6 <- glm(Br ~ Tmax,family = binomial(link = "logit"), peha_all)
+lm7 <- glm(Br ~ x,family = binomial(link = "logit"), peha_all)
+lm8 <- glm(Br ~ vpdmax, family = binomial(link = "logit"),peha_all)
+lm9 <- glm(Br ~ 1,family = binomial(link = "logit"), peha_all)
 
 
 lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
