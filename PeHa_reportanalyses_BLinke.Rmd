@@ -749,8 +749,8 @@ for(i in 2:length(lm.list)){
 }
 
 levels(peha_all$Site)
-summary(lm2)
-summary(lm3)
+summary(lm2) # ~ Site * tmax
+# summary(lm3)
 ```
 
 # percent reproductive should be a beta - binomial(link = "logit")
@@ -766,20 +766,9 @@ Zero/one-inflated binomial or beta regression with lots of zeros and ones (brms,
 
 
 ```{r}
-library(lmtest)
-library(sandwich)
-# require(AICcmodavg)
+# library(lmtest)
+# library(sandwich)
 
-
-# lm1 <- lm(Fl ~ Site*Tmin, peha_all)
-# lm2 <- lm(Fl ~ Site*Tmax, peha_all)
-# lm3 <- lm(Fl ~ Site*vpdmax, peha_all) # how much vapor deficit
-# lm4 <- lm(Fl ~ Site*x, peha_all) # x is precipitation
-# lm5 <- lm(Fl ~ Tmin, peha_all)
-# lm6 <- lm(Fl ~ Tmax, peha_all)
-# lm7 <- lm(Fl ~ x, peha_all)
-# lm8 <- lm(Fl ~ vpdmax, peha_all)
-# lm9 <- lm(Fl ~ 1, peha_all)
 lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_all)
 lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_all)
 lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_all) # how much vapor deficit
@@ -800,7 +789,10 @@ for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
 
+# precip
+summary(lm7)
 summary(lm2)
+summary(lm1)
 ```
 
 ```{r}
