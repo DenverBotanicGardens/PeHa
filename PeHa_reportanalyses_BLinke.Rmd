@@ -44,7 +44,7 @@ first column is YYYY-MM and then data in metric
 One time to switch from downloading from the website to pulling from prism
 ```{r}
 currentyr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
-# 
+
 # # Precipitation monthly
 # get_prism_monthlys(type="ppt", mon = 1:12, keepZip = FALSE, years = 1980:currentyr)
 # # Maximum temperature (average)
@@ -556,6 +556,157 @@ ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig4.jpg", sep=""),
 
 
 ```
+
+
+Gaussian state-space model via Schaub & Kery 2022   
+```{r}
+library(jagsUI)
+library(dplyr)
+library(tidyr)
+```
+
+```{r}
+
+peha_GSSM <- peha %>%
+  group_by(Site, Year) %>%
+  summarise(Plants = n(),
+            Rosettes = sum(X.ofRosettes),
+            Vegetative = sum(X.ofRosettes[Fl == 0]),
+            Reproductive = sum(X.ofRosettes[Fl == 1]),
+            Fruit = sum(Fr_Fl))
+
+## ABOVE EAGLE
+y <-  peha_GSSM$Rosettes[peha_GSSM$Site == "Above Eagle"]
+
+jags.data <- list(y = y, T = length(y))  
+
+# JAGS model
+cat(file = "model1.txt", "
+    model {
+    
+    # Priors and linear models
+    mu.lam ~ dunif(0,10)        # Prior for mean growth rate
+    sig.lam ~ dunif(0,1)        # Prior for sd of growth rate
+    sig2.lam <- pow(sig.lam, 2)
+    tau.lam <- pow(sig.lam, -2)
+    sig.y ~ dunif(0.1, 100)      # Prior for sd of observation process
+    sig2.y <- pow(sig.y, 2)
+    tau.y <- pow(sig.y, -2)
+    
+    # Likelihood
+    # initial population size 
+    N[1] ~ dunif(0, 500)
+    
+    # Process model - population dynamics model
+    for (t in 1:(T-1)){
+      lambda[t] ~ dnorm(mu.lam, tau.lam)
+      N[t+1] <- N[t]*lambda[t]
+      }
+    
+    # Observation process
+    for (t in 1:T){
+      y[t] ~ dnorm(N[t], tau.y)
+    }
+    }")
+
+# Initial values
+inits <- function(){list(sig.lam=runif(1, 0, 1))}
+
+# Parameters monitored
+parameters <- c("lambda", "mu.lam", "sig2.y", "sig2.lam", "sig.y", "sig.lam", "N")
+
+# MCMC settings
+ni <- 200000; nb <- 10000; nc <- 3; nt <- 100; na <- 5000
+
+# Call JAGS from R (ART <1 min), check convergence and summarize posteriors
+out1 <- jags(jags.data, inits, parameters, "model1.txt", n.iter=ni, n.burnin=nb, n.chains=nc,
+n.thin=nt, n.adapt=na, parallel=TRUE)
+traceplot(out1)
+
+print(out1, 3)
+out1$mean
+
+plot(y, col = "blue", pch = 20)
+# lines(y)
+arrows(1:length(y), y, 1:length(y), out1$mean$N, length = 0.05)
+points(out1$mean$N)
+lines(out1$mean$N, col = "grey")
+lines(out1$q97.5$N, col = "red")
+lines(out1$q2.5$N, col = "red")
+
+```
+
+Dry Lake
+```{r}
+
+## Dry Lake
+y <-  peha_GSSM$Rosettes[peha_GSSM$Site == "Dry Lake"]
+
+jags.data <- list(y = y, T = length(y))  
+
+# JAGS model
+cat(file = "model1.txt", "
+    model {
+    
+    # Priors and linear models
+    mu.lam ~ dunif(0,10)        # Prior for mean growth rate
+    sig.lam ~ dunif(0,1)        # Prior for sd of growth rate
+    sig2.lam <- pow(sig.lam, 2)
+    tau.lam <- pow(sig.lam, -2)
+    sig.y ~ dunif(0.1, 100)      # Prior for sd of observation process
+    sig2.y <- pow(sig.y, 2)
+    tau.y <- pow(sig.y, -2)
+    
+    # Likelihood
+    # initial population size 
+    N[1] ~ dunif(0, 500)
+    
+    # Process model - population dynamics model
+    for (t in 1:(T-1)){
+      lambda[t] ~ dnorm(mu.lam, tau.lam)
+      N[t+1] <- N[t]*lambda[t]
+      }
+    
+    # Observation process
+    for (t in 1:T){
+      y[t] ~ dnorm(N[t], tau.y)
+    }
+    }")
+
+# Initial values
+inits <- function(){list(sig.lam=runif(1, 0, 1))}
+
+# Parameters monitored
+parameters <- c("lambda", "mu.lam", "sig2.y", "sig2.lam", "sig.y", "sig.lam", "N")
+
+# MCMC settings
+ni <- 200000; nb <- 10000; nc <- 3; nt <- 100; na <- 5000
+
+# Call JAGS from R (ART <1 min), check convergence and summarize posteriors
+out1 <- jags(jags.data, inits, parameters, "model1.txt", n.iter=ni, n.burnin=nb, n.chains=nc,
+n.thin=nt, n.adapt=na, parallel=TRUE)
+# traceplot(out1)
+
+print(out1, 3)
+out1$mean
+
+plot(y, col = "blue", pch = 20)
+# lines(y)
+arrows(1:length(y), y, 1:length(y), out1$mean$N, length = 0.05)
+points(out1$mean$N)
+lines(out1$mean$N, col = "grey")
+lines(out1$q97.5$N, col = "red")
+lines(out1$q2.5$N, col = "red")
+```
+
+
+
+
+
+
+
+
+
  
 
 # add a subject unique identifier row      
