@@ -108,7 +108,7 @@ peha.climate$Month <- substr(ae_prism$Date,6,7)
 
 peha.c <- peha.climate
 names(peha.c) ##Check first, order and complete list
-names(peha.c) <- c("Date","Precip","Tmin","tmean","Tmax","tdmean","vpdmin","vpdmax","Site","Year","Month")
+names(peha.c) <- c("Date","Precip","Tmin","tmean","Tmax","vpdmin","vpdmax","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
 
 ggplot(peha.c[peha.c$Year>2000,], aes(Date, Precip, colour = Site))+
@@ -138,14 +138,8 @@ ggplot(peha.c, aes(Date, vpdmax, colour = Site))+
   stat_smooth(method = "glm", se=FALSE)
 
 ## annual
-peha.annual <- aggregate(.~Year + Site, peha.c[,c(2:10)], function(x) mean(x, na.rm=TRUE))
+peha.annual <- aggregate(.~Year + Site, peha.c[,c(2:9)], function(x) mean(x, na.rm=TRUE))
 head(peha.annual)
-# library(dplyr)
-# peha.annual <- peha.c %>%
-#                   group_by(Year, Site) %>%
-#                   summarise(across(Precip:vpdmax), mean)
-# Output is a tibble
-# head(peha.annual)
 peha.annual$Year <- as.numeric(peha.annual$Year)
 
 ggplot(peha.annual, aes(Year, Precip, colour = Site))+
@@ -287,7 +281,7 @@ Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   theme_bw() +
   ylab("% of reproductive individuals") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,1), legend.position=c(1,1))+
+        legend.justification=c(0,1), legend.position=c(0,1))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
@@ -314,7 +308,7 @@ Fig2d <- ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour
   theme_bw() +
   ylab("Total 12 month precipition (mm)") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,1), legend.position=c(1,1))  +
+        legend.justification=c(0,0), legend.position=c(0,0))  +
   xlab("Preceeding year (July-June)") +
   geom_hline(yintercept = avg.site$Precip[1], col = "pink") +
   geom_hline(yintercept = avg.site$Precip[2], col = "lightblue") +
@@ -328,7 +322,7 @@ fig2e_vpdmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, vpdmax, colour=S
   theme_bw() +
   ylab("Average maximum water vapor pressure deficit") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,0), legend.position=c(1,0))  +
+        legend.justification=c(0,1), legend.position=c(0,1))  +
   xlab("Preceeding year (July-June)") +
   geom_hline(yintercept = mean(peha_all$vpdmax[peha_all$Site=="Above Eagle"]), col = "pink") +
   geom_hline(yintercept = mean(peha_all$vpdmax[peha_all$Site=="Dry Lake"]), col = "lightblue") +
@@ -479,6 +473,14 @@ dev.off()
 Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
 ```{r} 
 
+
+peha_FlYN <- peha_FlYN %>%
+  ungroup() %>%
+  mutate(scaleppt = scale(x),
+         scaletmin = scale(Tmin),
+         scaletmax = scale(Tmax),
+         scalevpdmax = scale(vpdmax))
+
 peha_all <- peha_all %>%
   ungroup() %>%
   mutate(scaleppt = scale(x),
@@ -486,32 +488,38 @@ peha_all <- peha_all %>%
          scaletmax = scale(Tmax),
          scalevpdmax = scale(vpdmax))
 
-Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
-  geom_point() +
-  geom_smooth(method ="glm") +
-  scale_color_manual(values = c("black","red")) +
-  theme_bw() +
-  xlab("") +
-  ylab(expression(paste("Average rosettes per 60m"^2))) +
-  xlab("Precipitation")+
-  theme(legend.justification=c(0,1), legend.position=c(0,1),
-        legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("a)") +
-  theme(plot.title=element_text(hjust=0))
+peha_FlYN %>%
+  filter(Br > 1)
 
-# Rosettes is maxtemp
-# Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+peha_FlYN <- peha_FlYN %>%
+  dplyr::mutate(Br = if_else(Br >= 1, 1,0))
+
+# Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
 #   geom_point() +
 #   geom_smooth(method ="glm") +
 #   scale_color_manual(values = c("black","red")) +
 #   theme_bw() +
 #   xlab("") +
 #   ylab(expression(paste("Average rosettes per 60m"^2))) +
-#   xlab("Maximum Temperature")+
+#   xlab("Precipitation")+
 #   theme(legend.justification=c(0,1), legend.position=c(0,1),
 #         legend.background = element_rect(fill=alpha('white', 0.1)))+
 #   ggtitle("a)") +
 #   theme(plot.title=element_text(hjust=0))
+
+# Rosettes is maxtemp
+Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+  geom_point() +
+  geom_smooth(method ="glm") +
+  scale_color_manual(values = c("black","red")) +
+  theme_bw() +
+  xlab("") +
+  ylab(expression(paste("Average rosettes per 60m"^2))) +
+  xlab("Maximum Temperature (degree C)")+
+  theme(legend.justification=c(1,1), legend.position=c(1,1),
+        legend.background = element_rect(fill=alpha('white', 0.1)))+
+  ggtitle("a)") +
+  theme(plot.title=element_text(hjust=0))
 
 # Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
 #   geom_point() +
@@ -526,55 +534,71 @@ Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
 #   ggtitle("b)") +
 #   theme(plot.title=element_text(hjust=0))
 # 
-Fig4b1 <- ggplot(peha_all, aes(x, Fl)) +
-  geom_point() +
-  geom_smooth(method ="lm") +
+# Fig4b1 <- ggplot(peha_all, aes(x, Fl)) +
+#   geom_point() +
+#   geom_smooth(method ="lm") +
+#   scale_color_manual(values = c("black","red")) +
+#   theme_bw() +
+#   xlab("") +
+#   ylab("% reproductive individuals") +
+#   xlab("Precipitation")+
+#   theme(legend.justification=c(0,1), legend.position=c(0,1),
+#         legend.background = element_rect(fill=alpha('white', 0.1)))+
+#   ggtitle("b)") +
+#   theme(plot.title=element_text(hjust=0))
+# 
+# Fig4b2 <- ggplot(peha_all, aes(Tmin, Fl, colour = Site)) +
+#   geom_point() +
+#   geom_smooth(method ="lm") +
+#   scale_color_manual(values = c("black","red")) +
+#   theme_bw() +
+#   xlab("") +
+#   ylab("% reproductive individuals") +
+#   xlab("Minimum Temperature")+
+#   theme(legend.justification=c(0,1), legend.position=c(0,1),
+#         legend.background = element_rect(fill=alpha('white', 0.1)))+
+#   # ggtitle("c)") +
+#   theme(plot.title=element_text(hjust=0))
+# 
+# 
+# Fig4b3 <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
+#   geom_point() +
+#   geom_smooth(method ="lm") +
+#   scale_color_manual(values = c("black","red")) +
+#   theme_bw() +
+#   xlab("") +
+#   ylab("% reproductive individuals") +
+#   xlab("Maximum Temperature")+
+#   theme(legend.justification=c(0,1), legend.position=c(0,1),
+#         legend.background = element_rect(fill=alpha('white', 0.1)))+
+#   # ggtitle("c)") +
+#   theme(plot.title=element_text(hjust=0))
+
+Fig4b <- ggplot(peha_FlYN, aes(Tmax, Fl, color = Site))+
+  geom_point(pch = "|")+
+  geom_smooth(method = "glm", 
+              method.args = list(family = "binomial"), 
+              se = TRUE)+
+  theme_bw()+
   scale_color_manual(values = c("black","red")) +
-  theme_bw() +
-  xlab("") +
-  ylab("% reproductive individuals") +
-  xlab("Precipitation")+
-  theme(legend.justification=c(0,1), legend.position=c(0,1),
+  ylab("Probability of reproduction") +
+  xlab("Maximum Temperature (degree C)")+
+  theme(legend.justification=c(1,0.90), legend.position=c(1,0.90),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
-Fig4b2 <- ggplot(peha_all, aes(Tmin, Fl, colour = Site)) +
-  geom_point() +
-  geom_smooth(method ="lm") +
+
+Fig4c <- ggplot(peha_FlYN, aes(vpdmax, Br, color = Site))+ 
+  geom_point(pch = "|")+
+  geom_smooth(method = "glm", 
+              method.args = list(family = "binomial"), 
+              se = TRUE)+
+  theme_bw()+
   scale_color_manual(values = c("black","red")) +
-  theme_bw() +
-  xlab("") +
-  ylab("% reproductive individuals") +
-  xlab("Minimum Temperature")+
-  theme(legend.justification=c(0,1), legend.position=c(0,1),
-        legend.background = element_rect(fill=alpha('white', 0.1)))+
-  # ggtitle("c)") +
-  theme(plot.title=element_text(hjust=0))
-
-
-Fig4b3 <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
-  geom_point() +
-  geom_smooth(method ="lm") +
-  scale_color_manual(values = c("black","red")) +
-  theme_bw() +
-  xlab("") +
-  ylab("% reproductive individuals") +
-  xlab("Maximum Temperature")+
-  theme(legend.justification=c(0,1), legend.position=c(0,1),
-        legend.background = element_rect(fill=alpha('white', 0.1)))+
-  # ggtitle("c)") +
-  theme(plot.title=element_text(hjust=0))
-
-
-Fig4c <- ggplot(peha_all, aes(vpdmax, Br))+ #, colour = Site)) +
-  geom_point() +
-  geom_smooth(method ="glm") +
-  scale_color_manual(values = c("black","red")) +
-  theme_bw() +
   xlab("Maximum vapor pressure deficit") +
-  ylab("% of individuals with herbivory") +
-  theme(legend.justification=c(0,0), legend.position=c(0,0),
+  ylab("Probability of herbivory") +
+  theme(legend.justification=c(1,0.1), legend.position=c(1,0.1),
         legend.background = element_rect(fill=alpha('white', 0.5)))+
   ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
@@ -583,9 +607,11 @@ Fig4c <- ggplot(peha_all, aes(vpdmax, Br))+ #, colour = Site)) +
 ```{r}
 ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig4.jpg", sep=""),
        
-       (Fig4a + plot_spacer() + plot_spacer())/
-         (Fig4b1 + Fig4b2 + Fig4b3)/
-         (Fig4c+ plot_spacer() + plot_spacer()),
+       # (Fig4a + plot_spacer() + plot_spacer())/
+       #   (Fig4b + Fig4b2 + Fig4b3)/
+       #   (Fig4c+ plot_spacer() + plot_spacer()),
+       (Fig4a + Fig4b) /
+         (Fig4c + plot_spacer()),
 
        width=325, height=325, units="mm", dpi=300)
 
@@ -989,9 +1015,9 @@ for(i in 2:length(lm.list)){
 
 levels(peha_all$Site)
 summary(lm2) # ~ Site * tmax
-# summary(lm3)
+exp(lm2$coefficients)
+sum(lm2$coefficients[c(3,4)])
 
-summary(lm4)  # site and precip
 ```
 
 # percent reproductive should be a beta - binomial(link = "logit")
@@ -1008,29 +1034,15 @@ Zero/one-inflated binomial or beta regression with lots of zeros and ones (brms,
 Use binomial but merge data to peha (not summarized by plot peha_all)
 
 ```{r}
-# library(lmtest)
-# library(sandwich)
-peha_FlYN <- peha_FlYN %>%
-  
 
-# lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_all)  #   #2
-# lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_all) #     #3
-# lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_all) # how much vapor deficit
-# lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
-# lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_all)
-# lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_all) 
-# lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_all) #             #1
-# lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_all)
-# lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_all)
-
-lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_FlYN)  #   #2
-lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_FlYN) #     #3
-lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_FlYN) # how much vapor deficit
-lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_FlYN) # x is precipitation
-lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_FlYN)
-lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_FlYN) 
-lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_FlYN) #             #1
-lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_FlYN)
+lm1 <- glm(Fl ~ Site*scaletmin, family = binomial(link = "logit"), peha_FlYN)  #   #2
+lm2 <- glm(Fl ~ Site*scaletmax, family = binomial(link = "logit"),peha_FlYN) #     #3
+lm3 <- glm(Fl ~ Site*scalevpdmax, family = binomial(link = "logit"),peha_FlYN) # how much vapor deficit
+lm4 <- glm(Fl ~ Site*scaleppt, family = binomial(link = "logit"),peha_FlYN) # x is precipitation
+lm5 <- glm(Fl ~ scaletmin, family = binomial(link = "logit"),peha_FlYN)
+lm6 <- glm(Fl ~ scaletmax, family = binomial(link = "logit"),peha_FlYN) 
+lm7 <- glm(Fl ~ scaleppt, family = binomial(link = "logit"),peha_FlYN) #             #1
+lm8 <- glm(Fl ~ scalevpdmax, family = binomial(link = "logit"),peha_FlYN)
 lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_FlYN)
 
 
@@ -1043,24 +1055,22 @@ for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
 
-# precip
-summary(lm7)
 summary(lm2)
-summary(lm1)
+sum(lm2$coefficients[c(3,4)])
 ```
 
 ```{r}
 
 
-lm1 <- glm(Br ~ Site*Tmin, family = binomial(link = "logit"),peha_all)
-lm2 <- glm(Br ~ Site*Tmax,family = binomial(link = "logit"), peha_all)
-lm3 <- glm(Br ~ Site*vpdmax,family = binomial(link = "logit"), peha_all) # how much vapor deficit
-lm4 <- glm(Br ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
-lm5 <- glm(Br ~ Tmin,family = binomial(link = "logit"), peha_all)
-lm6 <- glm(Br ~ Tmax,family = binomial(link = "logit"), peha_all)
-lm7 <- glm(Br ~ x,family = binomial(link = "logit"), peha_all)
-lm8 <- glm(Br ~ vpdmax, family = binomial(link = "logit"),peha_all)
-lm9 <- glm(Br ~ 1,family = binomial(link = "logit"), peha_all)
+lm1 <- glm(Br ~ Site*scaletmin, family = binomial(link = "logit"),peha_FlYN)
+lm2 <- glm(Br ~ Site*scaletmax,family = binomial(link = "logit"), peha_FlYN)
+lm3 <- glm(Br ~ Site*scalevpdmax,family = binomial(link = "logit"), peha_FlYN) # how much vapor deficit
+lm4 <- glm(Br ~ Site*scaleppt, family = binomial(link = "logit"),peha_FlYN) # x is precipitation
+lm5 <- glm(Br ~ scaletmin,family = binomial(link = "logit"), peha_FlYN)
+lm6 <- glm(Br ~ scaletmax,family = binomial(link = "logit"), peha_FlYN)
+lm7 <- glm(Br ~ scaleppt,family = binomial(link = "logit"), peha_FlYN)
+lm8 <- glm(Br ~ scalevpdmax, family = binomial(link = "logit"),peha_FlYN)
+lm9 <- glm(Br ~ 1,family = binomial(link = "logit"), peha_FlYN)
 
 
 lm.list <- list(lm1,lm2, lm3, lm4, lm5, lm6, lm7, lm8, lm9)
@@ -1071,28 +1081,13 @@ for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
 
-summary(lm8)
-# summary(lm3)
+summary(lm3)
+sum(lm3$coefficients[c(3,4)])
 ```
 
-
-```{r}
-ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
-  geom_point() +
-  geom_smooth(method ="lm") +
-  scale_color_manual(values = c("black","red")) +
-  theme_bw() +
-  xlab("") +
-  ylab(expression(paste("Average rosettes per 60m"^2))) +
-  theme(legend.justification=c(0,1), legend.position=c(0,1),
-        legend.background = element_rect(fill=alpha('white', 0.1)))+
-  ggtitle("a)") +
-  theme(plot.title=element_text(hjust=0))
-
-```
 
 # Percent of reproductive individuals   
-There is a signficantly greater proportion of reproductive individuals found at Above Eagle than at Dry Lake 
+There is a significantly greater proportion of reproductive individuals found at Above Eagle than at Dry Lake 
 ```{r}
 peha.aov.fl <-aov(asin(sqrt(Fl))~Year*Site + Error(subject), data=peha_all) 
 summary(peha.aov.fl) 
