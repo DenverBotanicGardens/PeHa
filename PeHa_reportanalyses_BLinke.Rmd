@@ -23,6 +23,8 @@ library(nlme)
 library(car)
 library(Rmisc)
 library(patchwork)
+library(dplyr)
+library(tidyr)
 
 library(prism)
 currentYr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
@@ -188,6 +190,18 @@ ggplot(peha, aes(Year, X.ofRosettes, colour=Site)) +
 ##### Summary data    
 We want precipitation as the previous 12 months (July-June)
 ```{r}
+
+peha %>%
+  group_by(Site,Year) %>%
+  dplyr::summarise(Ros = sum(X.ofRosettes)) %>%
+  print(n = 50)
+  
+peha %>%
+  group_by(Site,Year) %>%
+  dplyr::summarise(Ros = sum(X.ofRosettes)) %>%
+  group_by(Site) %>%
+  dplyr::summarise(Totmean = mean(Ros))
+
 peha_sum <- aggregate(list(TotRos = peha$X.ofRosettes), 
                       by=list(Site=peha$Site, Year=peha$Year, Transect=peha$Transect), 
                       FUN = sum)
@@ -223,6 +237,10 @@ peha_m[,c("TotRos","Fl","Br","Year")] <- lapply(peha_m[,c("TotRos","Fl","Br","Ye
 # x is sum of precip over all preceding months
 # peha_all <- merge(peha_m, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
 peha_all <- merge(peha_vpd_temp_m,  peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12") )
+
+peha_FlYN <- merge(peha, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12") )
+peha_FlYN <- merge(peha_FlYN, peha_vapordeficit, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
+
 
 ```
 
@@ -418,7 +436,7 @@ lamDL <- lapply(lambda.DL[,5:7], function(x) exp(x))
 lamAE <- lapply(lambda.AE[,5:7], function(x) exp(x))
 ```
 
-Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demogrphaic study    
+Figure 2. Annual growth rate estimates with 95% confidence intervals for consectutive additional years of demographic study    
 ```{r}
 jpeg(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig3a_count.jpg", sep=""), width=175, height=125, units="mm", res=300)
 
@@ -460,19 +478,40 @@ dev.off()
   
 Figure 4. Annual precipitation by (A) number of individuals, (B) percent reproductive and (c) percent herbivory. Black=Above Eagle, Red=Dry Lake
 ```{r} 
-# Rosettes is maxtemp
-Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+
+peha_all <- peha_all %>%
+  ungroup() %>%
+  mutate(scaleppt = scale(x),
+         scaletmin = scale(Tmin),
+         scaletmax = scale(Tmax),
+         scalevpdmax = scale(vpdmax))
+
+Fig4a <- ggplot(peha_all, aes(x, TotRos, colour = Site)) +
   geom_point() +
   geom_smooth(method ="glm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
   ylab(expression(paste("Average rosettes per 60m"^2))) +
-  xlab("Maximum Temperature")+
+  xlab("Precipitation")+
   theme(legend.justification=c(0,1), legend.position=c(0,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
+
+# Rosettes is maxtemp
+# Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+#   geom_point() +
+#   geom_smooth(method ="glm") +
+#   scale_color_manual(values = c("black","red")) +
+#   theme_bw() +
+#   xlab("") +
+#   ylab(expression(paste("Average rosettes per 60m"^2))) +
+#   xlab("Maximum Temperature")+
+#   theme(legend.justification=c(0,1), legend.position=c(0,1),
+#         legend.background = element_rect(fill=alpha('white', 0.1)))+
+#   ggtitle("a)") +
+#   theme(plot.title=element_text(hjust=0))
 
 # Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
 #   geom_point() +
@@ -569,16 +608,18 @@ library(tidyr)
 
 peha_GSSM <- peha %>%
   group_by(Site, Year) %>%
-  summarise(Plants = n(),
+  dplyr::summarise(Plants = n(),
             Rosettes = sum(X.ofRosettes),
             Vegetative = sum(X.ofRosettes[Fl == 0]),
             Reproductive = sum(X.ofRosettes[Fl == 1]),
             Fruit = sum(Fr_Fl))
 
 ## ABOVE EAGLE
-y <-  peha_GSSM$Rosettes[peha_GSSM$Site == "Above Eagle"]
+# y <-  peha_GSSM$Rosettes[peha_GSSM$Site == "Above Eagle"]
+nyears <- length(peha_GSSM$Site[peha_GSSM$Site == "Above Eagle"])
 
-jags.data <- list(y = y, T = length(y))  
+jags.data <- list(y = peha_GSSM$Rosettes,
+                  nsites = 2, nyears = nyears)  
 
 # JAGS model
 cat(file = "model1.txt", "
@@ -848,6 +889,15 @@ Starting in 2012 it changed and no longer gives the number that have fruit but t
 
 ```{r}
 
+## Did we start taking data on the number of fruit and flowers instead of the ones that did at all? 
+peha %>%
+  group_by(Site, Year) %>%
+  dplyr::summarise(NumFr = sum(Fr_Fl > 1)) %>%
+  print(n = 50)
+
+peha <- peha %>%
+  mutate(Fr_FlNum = if_else(Fr_Fl == 0, 0, 1))
+
 Appendix.list <- lapply(split(peha, list(peha$Site,peha$Year)),
                    function(x) do.call(rbind,lapply(split(x, x$Transect),
                                       function(y) data.frame(Plot=unique(y$Transect),
@@ -855,7 +905,7 @@ Appendix.list <- lapply(split(peha, list(peha$Site,peha$Year)),
                                                              Plants=length(y$X.ofRosettes),
                                                              Rosettes=sum(y$X.ofRosettes),
                                                              Flowered=sum(y$Fl),
-                                                             Fruited=sum(y$Fr_Fl, na.rm=TRUE),
+                                                             Fruited=sum(y$Fr_FlNum, na.rm=TRUE),
                                                              Herbivory=sum(y$Br)))))
 
 
@@ -918,24 +968,14 @@ numfruit <- lapply(split(peha, peha$Site), function(site){
 require(AICcmodavg)
 
 
-# lm1 <- lm(TotRos ~ Site*Tmin, peha_all)
-# lm2 <- lm(TotRos ~ Site*Tmax, peha_all)
-# lm3 <- lm(TotRos ~ Site*vpdmax, peha_all) # how much vapor deficit
-# lm4 <- lm(TotRos ~ Site*x, peha_all) # x is precipitation
-# lm5 <- lm(TotRos ~ Tmin, peha_all)
-# lm6 <- lm(TotRos ~ Tmax, peha_all)
-# lm7 <- lm(TotRos ~ x, peha_all)
-# lm8 <- lm(TotRos ~ vpdmax, peha_all)
-# lm9 <- lm(TotRos ~ 1, peha_all)
-
-lm1 <- glm(TotRos ~ Site*Tmin, family = poisson, peha_all)
-lm2 <- glm(TotRos ~ Site*Tmax, family = poisson,peha_all)
-lm3 <- glm(TotRos ~ Site*vpdmax, family = poisson,peha_all) # how much vapor deficit
-lm4 <- glm(TotRos ~ Site*x, family = poisson,peha_all) # x is precipitation
-lm5 <- glm(TotRos ~ Tmin, family = poisson,peha_all)
-lm6 <- glm(TotRos ~ Tmax, family = poisson,peha_all)
-lm7 <- glm(TotRos ~ x,family = poisson, peha_all)
-lm8 <- glm(TotRos ~ vpdmax,family = poisson, peha_all)
+lm1 <- glm(TotRos ~ Site*scaletmin, family = poisson, peha_all)
+lm2 <- glm(TotRos ~ Site*scaletmax, family = poisson,peha_all)
+lm3 <- glm(TotRos ~ Site*scalevpdmax, family = poisson,peha_all) # how much vapor deficit
+lm4 <- glm(TotRos ~ Site*scaleppt, family = poisson,peha_all) # 
+lm5 <- glm(TotRos ~ scaletmin, family = poisson,peha_all)
+lm6 <- glm(TotRos ~ scaletmax, family = poisson,peha_all)
+lm7 <- glm(TotRos ~ scaleppt,family = poisson, peha_all)
+lm8 <- glm(TotRos ~ scalevpdmax,family = poisson, peha_all)
 lm9 <- glm(TotRos ~ 1, family = poisson,peha_all)
 
 
@@ -951,7 +991,7 @@ levels(peha_all$Site)
 summary(lm2) # ~ Site * tmax
 # summary(lm3)
 
-summary(lm4)
+summary(lm4)  # site and precip
 ```
 
 # percent reproductive should be a beta - binomial(link = "logit")
@@ -965,20 +1005,33 @@ Binomial logisic for binary and count/proportional data
 Beta regression for (0,1) between but not including 0 and 1: (see betareg, DirichletReg, mgcv, brms)
 Zero/one-inflated binomial or beta regression with lots of zeros and ones (brms, VGAM, gamlss)   
 
+Use binomial but merge data to peha (not summarized by plot peha_all)
 
 ```{r}
 # library(lmtest)
 # library(sandwich)
+peha_FlYN <- peha_FlYN %>%
+  
 
-lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_all)  #   #2
-lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_all) #     #3
-lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_all) # how much vapor deficit
-lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
-lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_all)
-lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_all) 
-lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_all) #             #1
-lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_all)
-lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_all)
+# lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_all)  #   #2
+# lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_all) #     #3
+# lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_all) # how much vapor deficit
+# lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_all) # x is precipitation
+# lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_all)
+# lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_all) 
+# lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_all) #             #1
+# lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_all)
+# lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_all)
+
+lm1 <- glm(Fl ~ Site*Tmin, family = binomial(link = "logit"), peha_FlYN)  #   #2
+lm2 <- glm(Fl ~ Site*Tmax, family = binomial(link = "logit"),peha_FlYN) #     #3
+lm3 <- glm(Fl ~ Site*vpdmax, family = binomial(link = "logit"),peha_FlYN) # how much vapor deficit
+lm4 <- glm(Fl ~ Site*x, family = binomial(link = "logit"),peha_FlYN) # x is precipitation
+lm5 <- glm(Fl ~ Tmin, family = binomial(link = "logit"),peha_FlYN)
+lm6 <- glm(Fl ~ Tmax, family = binomial(link = "logit"),peha_FlYN) 
+lm7 <- glm(Fl ~ x, family = binomial(link = "logit"),peha_FlYN) #             #1
+lm8 <- glm(Fl ~ vpdmax, family = binomial(link = "logit"),peha_FlYN)
+lm9 <- glm(Fl ~ 1, family = binomial(link = "logit"),peha_FlYN)
 
 
 
