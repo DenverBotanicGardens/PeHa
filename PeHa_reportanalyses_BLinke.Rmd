@@ -14,14 +14,14 @@ ctrl+Alt+c will run a chunk of code
 
 ```{r}
 library(ggplot2)
-library(reshape2)
+# library(reshape2)
 library(grid)
 library(devtools)
 library(lattice)
 library(RCurl)
 library(nlme)
 library(car)
-library(Rmisc)
+# library(Rmisc) # Because it requires plyr and that breaks the dplyr group_by
 library(patchwork)
 library(dplyr)
 library(tidyr)
@@ -32,6 +32,46 @@ currentYr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
 
 ```
 
+
+
+## Survey123 to upload format   
+```{r}
+## Transect is the MySQL Transect ID, repeats are when two teams completed one plot
+DoubleObs <- read.csv("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_RawData/2025/2025_Penstemon-harringtonii_RawDataS123/Penstemon_harringtonii_DemographicMonitoring_0.csv")
+DoubleObs <- DoubleObs %>%
+  dplyr::group_by(Site, Transect) %>%
+  summarise(NumMissedByPrimary = sum(Number.Plants.Missed.By.Primary.Observer),
+            PrimaryObs = paste(Primary.Observer.s.Initials, collapse = ","),
+            SecondObs = paste(Secondary.Observer, collapse = ",")) 
+
+plants <- read.csv("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_RawData/2025/2025_Penstemon-harringtonii_RawDataS123/plants_1.csv")
+
+peha2025 <- DoubleObs %>%
+  left_join(plants, by = c("Transect" = "MySQL.Transect.ID")) %>%
+  dplyr::select(Site.y, Transect, Transect.y, X:X.Fr.Fl,NumMissedByPrimary, PrimaryObs, SecondObs)
+
+### Need to remove the ones where primary and secondary match (me, I did some myself so no missed)
+peha2025 %>%
+  filter(PrimaryObs != SecondObs) %>%
+  group_by(Transect, NumMissedByPrimary) %>%
+  summarise(n = n())
+
+toUpload <- peha2025 %>%
+  dplyr::select(Site.x, MySQL.Transect.ID, Transect, X..of.Rosettes, 
+         X,Y, X..of.Rosettes, flowered..br....0.or.1.,
+         X.Fr.Fl, Browsed..br....0.or.1., Comments)
+
+
+plants %>%
+  dplyr::select(Site, MySQL.Transect.ID, Transect, X,Y, 
+                X..of.Rosettes, flowered..br....0.or.1., 
+                X.Fr.Fl, Browsed..br....0.or.1., Comments) %>%
+  # group_split(Site, Transect, .keep =TRUE) %>%
+  arrange(Site, Transect, Y) %>%
+  write.csv("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_RawData/2025/2025_Penstemon-harringtonii_RawDataS123/toUpload.csv")
+  
+
+```
 
 
 gather climate data from WWDT and/or <http://www.prism.oregonstate.edu/explorer/>  
@@ -89,7 +129,8 @@ tdmean: mean dew point, mean dew point temperature averaged over all days in the
 vpdmin: minimum vapor pressure deficit, higher relative humidity == less transpiration - difference between theoretical pressure of water vapor in air at a given temperature and actual pressure of water vapor in air at that temperature. Or to plants is the difference between vaopor pressure in leaf to the air, so will lose more water if a bigger deficit. 
 
 beatrice.lincke  
-"C:\Users\DePrengm\Denver Botanic Gardens\Conservation - General\AllProjectsBySpecies\Penstemon-harringtonii\2021_Penstemon-harringtonii_AE_PRISM.csv"
+"C:/Users/DePrengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/2021_Penstemon-harringtonii_AE_PRISM.csv"  
+https://prism.nacse.org/documents/PRISM_datasets.pdf 
 ```{r}
 # userpath <- "C:/Users/beatrice.lincke/Denver Botanic Gardens/Conservation - Penstemon-harringtonii/" 
 userpath <- paste("C:/Users/DePrengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_AnnualReports/",
@@ -108,7 +149,7 @@ peha.climate$Month <- substr(ae_prism$Date,6,7)
 
 peha.c <- peha.climate
 names(peha.c) ##Check first, order and complete list
-names(peha.c) <- c("Date","Precip","Tmin","tmean","Tmax","vpdmin","vpdmax","Site","Year","Month")
+names(peha.c) <- c("Date","Precip","Tmin","tmean","Tmax","tdewmean","vpdmin","vpdmax","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
 
 ggplot(peha.c[peha.c$Year>2000,], aes(Date, Precip, colour = Site))+
@@ -138,11 +179,37 @@ ggplot(peha.c, aes(Date, vpdmax, colour = Site))+
   stat_smooth(method = "glm", se=FALSE)
 
 ## annual
-peha.annual <- aggregate(.~Year + Site, peha.c[,c(2:9)], function(x) mean(x, na.rm=TRUE))
+peha.annual <- peha.c %>%
+  mutate(Month = as.numeric(Month)) %>%
+  mutate(Year = as.numeric(Year)) %>%
+  mutate(Prev12 = case_when(Month < 7 ~ (Year-1),
+                            TRUE ~ Year)) %>%
+  group_by(Prev12, Site) %>%
+  summarise(Precip = sum(Precip),
+            tmin = min(Tmin),
+            tminavg = mean(Tmin),
+            tmax = max(Tmax),
+            tmaxavg = mean(Tmax),
+            DewPtmean = mean(tdewmean),
+            vpdminmean = mean(vpdmin),
+            vpdmin = min(vpdmin),
+            vpdmaxmean = mean(vpdmax),
+            vpdmax = max(vpdmax))
+# peha.annual <- aggregate(.~Year + Site, peha.c[,c(2:9)], function(x) mean(x, na.rm=TRUE))
 head(peha.annual)
-peha.annual$Year <- as.numeric(peha.annual$Year)
 
-ggplot(peha.annual, aes(Year, Precip, colour = Site))+
+peha.c %>%
+  filter(Year == 2015) %>%
+  group_by(Site) %>%
+  summarise(vpdmax = min(vpdmax))
+
+peha.c %>%
+  filter(Year == 2015) %>%
+  group_by(Site) %>%
+  summarise(vpdmaxmean = mean(vpdmax))
+
+peha.annual %>%
+ggplot( aes(Prev12, Precip, colour = Site))+
   stat_summary(fun = mean, geom="line")+
   theme_bw()+
   stat_smooth(method = "glm", se=FALSE)
@@ -150,12 +217,31 @@ ggplot(peha.annual, aes(Year, Precip, colour = Site))+
 ## vapor-pressure deficit is independent of temperature and predicts plant transpiration and water loss
 ## water balance is correlated with site conditions and should better explain fine scale variation in plant presence (Lutz et al 2010)
 ## VPD driver for transpiration in plants - higher VPD == physioloigcal stress under water shortage, decrease growth and productivity
-ggplot(peha.annual[peha.annual$Year>1994,], aes(Year, vpdmax, colour = Site))+
+peha.annual %>%
+  # filter(Prev12 > 1993) %>%
+ggplot(   aes(Prev12, vpdmax, colour = Site))+
   stat_summary(fun = mean, geom="line")+
   theme_bw()+
-  stat_smooth(method = "glm", se=FALSE)
+  stat_smooth(method = "glm", se=TRUE)
 
-ggplot(peha.annual[peha.annual$Year>1994,], aes(Year, vpdmin, colour = Site))+
+peha.annual %>%
+  # filter(Prev12 > 1993) %>%
+ggplot(   aes(Prev12, vpdmaxmean, colour = Site))+
+  stat_summary(fun = mean, geom="line")+
+  theme_bw()+
+  stat_smooth(method = "glm", se=TRUE)
+
+
+peha.annual %>%
+  # filter(Prev12 > 1993) %>%
+ggplot(   aes(Prev12, vpdmin, colour = Site))+
+  stat_summary(fun = mean, geom="line")+
+  theme_bw()+
+  stat_smooth(method = "glm", se=TRUE)
+
+peha.annual %>%
+  filter(Prev12 > 1993) %>%
+ggplot(   aes(Prev12, vpdmax, colour = Site))+
   stat_summary(fun = mean, geom="line")+
   theme_bw()+
   stat_smooth(method = "glm", se=FALSE)
@@ -165,6 +251,8 @@ ggplot(peha.annual[peha.annual$Year>1994,], aes(Year, vpdmin, colour = Site))+
 #Summary table from https://research.botanicgardens.org PeHa>Reports>Summary Table (csv)
 ```{r}
 peha_summary <- read.csv(paste(userpath,"peha_",currentyr,"_summary.csv", sep=""))
+## Number of rosettes counted in current year
+sum(peha_summary$Sumofrosettes[peha_summary$Year == currentyr])
 ```
 
 #PeHa>Reports>Raw Data
@@ -196,55 +284,23 @@ peha %>%
   group_by(Site) %>%
   dplyr::summarise(Totmean = mean(Ros))
 
-peha_sum <- aggregate(list(TotRos = peha$X.ofRosettes), 
-                      by=list(Site=peha$Site, Year=peha$Year, Transect=peha$Transect), 
-                      FUN = sum)
 
-peha_fl.herb <- aggregate(peha[,c("Fl","Br")], # c(7,9)], 
-                     by=list(Site=peha$Site, Year=peha$Year, Transect=peha$Transect),
-                     FUN = function(x) sum(x)/length(x))
-
-#Label Prev12 as 07 through 12 of the previous year and give it the year for 01-06 (of the previous year (the next year) 
-peha.c$Month <- as.numeric(peha.c$Month)
-peha.c$Year <- as.numeric(peha.c$Year)
-peha.c$Prev12 <- peha.c$Year
-peha.c[peha.c$Month > 6,"Prev12"] <- peha.c[peha.c$Month > 6,"Year"]+1 #8 should be Prev12, 6 is Year
-
-peha_m <- merge(peha_sum, peha_fl.herb, by = c("Site","Year","Transect"))
-
-# Average vpdmin and max per year
-peha_vapordeficit <- aggregate(peha.c[,c("Tmin","Tmax","vpdmin","vpdmax")], peha.c[,c("Site","Prev12")], 
-                    FUN = function(x) mean(x, na.rm = TRUE))
-peha_vpd_temp_m <- merge(peha_m, peha_vapordeficit,by.x = c("Site","Year"), by.y =c("Site","Prev12"))
-
-#Sum precipitation per year
-peha_c <- aggregate(peha.c$Precip, peha.c[,c("Site","Prev12")], 
-                    FUN = function(x) sum(x, na.rm = TRUE))
-
-#in 2012 there were no rosettes found in two transects; 9 and 28─
-table(peha_m$Transect, peha_m$Year) 
-table(peha_m$Transect, peha_m$Site) # DL transect 9 and 28
-#Add zero rows for 2012 transects 9 and 28 at Dry Lake
-peha_m <- rbind(peha_m, c("Dry Lake",2012,9,0,0,0), c("Dry Lake",2012,28,0,0,0))
-peha_m[,c("TotRos","Fl","Br","Year")] <- lapply(peha_m[,c("TotRos","Fl","Br","Year")], as.numeric)
-
-# x is sum of precip over all preceding months
-# peha_all <- merge(peha_m, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
-peha_all <- merge(peha_vpd_temp_m,  peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12") )
-
-peha_FlYN <- merge(peha, peha_c, by.x = c("Site","Year"), by.y =c("Site","Prev12") )
-peha_FlYN <- merge(peha_FlYN, peha_vapordeficit, by.x = c("Site","Year"), by.y =c("Site","Prev12"))
-
+peha_sum <- peha %>%
+  group_by(Site, Year, Transect) %>%
+  summarise(TotRos = sum(X.ofRosettes),
+            Fl = sum(Fl)/n(),
+            Br = sum(Br)/n())
+  
 
 ```
 
 
 Add summary statistics to the peha table
 ```{r}
-peha_sumSE <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site","Year"))
-peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
-peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
-peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
+# peha_sumSE <- summarySE(peha_sum, measurevar="TotRos", groupvars=c("Site","Year"))
+# peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
+# peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
+# peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
 
 peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
 
@@ -260,11 +316,19 @@ Add "a)" to each plot
 Figure 1a) average rosettes per transect   
 700 x 450
 ```{r}
+## Make sure zeros included when needed, need to fill with zero
 
-Fig2a <- ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
+Fig2a <- peha_sum %>%
+  group_by(Site, Year) %>%
+  summarise(meanRos = mean(TotRos),
+            sdRos = sd(TotRos),
+            SERos = sqrt(var(TotRos)/n()),
+            CIlwrRos = meanRos - (1.96 * SERos),
+            CIuprRos = meanRos + (1.96 * SERos)) %>%
+  ggplot( aes(Year, meanRos, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
-  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
-  geom_errorbar(aes(ymin=TotRos-se, ymax=TotRos+se),width=1, position = position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=CIlwrRos, ymax= CIuprRos),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("Average rosettes per transect") +
   theme(legend.background=element_blank(),
@@ -273,11 +337,19 @@ Fig2a <- ggplot(peha_sumSE, aes(Year, TotRos, colour=Site)) +
   theme(plot.title=element_text(hjust=0))
 
 
+
 # Figure 1b) percent of individuals that are flowering or fruiting
-Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
+Fig2b <- peha_sum %>%
+  group_by(Site, Year) %>%
+  summarise(mean = mean(Fl),
+            sd = sd(Fl),
+            SE = sqrt(var(Fl)/n()),
+            CIlwr = mean - (1.96 * SE),
+            CIupr = mean + (1.96 * SE)) %>%
+  ggplot( aes(Year, mean, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
-  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
-  geom_errorbar(aes(ymin=Fl-se, ymax=Fl+se),width=1, position = position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=CIlwr, ymax= CIupr),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of reproductive individuals") +
   theme(legend.background=element_blank(),
@@ -285,13 +357,19 @@ Fig2b <- ggplot(peha_sumSEfl, aes(Year, Fl, colour=Site)) +
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
-
 # Figure 1c) percent of indivdiuals with herbivory
 
-Fig2c <- ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
+Fig2c <- peha_sum %>%
+  group_by(Site, Year) %>%
+  summarise(mean = mean(Br),
+            sd = sd(Br),
+            SE = sqrt(var(Br)/n()),
+            CIlwr = mean - (1.96 * SE),
+            CIupr = mean + (1.96 * SE)) %>%
+  ggplot( aes(Year, mean, colour=Site)) +
   geom_point(position=position_dodge(0.1), shape=21, fill="white") +
-  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
-  geom_errorbar(aes(ymin=Br-se, ymax=Br+se),width=1, position = position_dodge(0.1)) +
+  geom_line(position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=CIlwr, ymax= CIupr),width=1, position = position_dodge(0.1)) +
   theme_bw() +
   ylab("% of individuals with herbivory") +
   theme(legend.background=element_blank(),
@@ -302,7 +380,26 @@ Fig2c <- ggplot(peha_sumSEbr, aes(Year, Br, colour=Site)) +
 # Precipitation not most important
 # Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 
-Fig2d <- ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
+Fig2d <- peha_c %>%
+  group_by(Site, Year) %>%
+  summarise(mean = mean(Br),
+            sd = sd(Br),
+            SE = sqrt(var(Br)/n()),
+            CIlwr = mean - (1.96 * SE),
+            CIupr = mean + (1.96 * SE)) %>%
+  ggplot( aes(Year, mean, colour=Site)) +
+  geom_point(position=position_dodge(0.1), shape=21, fill="white") +
+  geom_line(position=position_dodge(0.1)) +
+  geom_errorbar(aes(ymin=CIlwr, ymax= CIupr),width=1, position = position_dodge(0.1)) +
+  theme_bw() +
+  ylab("% of individuals with herbivory") +
+  theme(legend.background=element_blank(),
+        legend.justification=c(1,0), legend.position=c(1,0)) +
+  ggtitle("c)") +
+  theme(plot.title=element_text(hjust=0))
+  
+  
+  ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
