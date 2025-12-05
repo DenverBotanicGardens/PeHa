@@ -8,6 +8,7 @@ output: html_document
 Clear work environment
 ```{r}
 rm(list=ls())
+setwd("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii")
 
 ```
 ctrl+Alt+c will run a chunk of code
@@ -37,25 +38,28 @@ currentYr <- as.numeric(format(as.Date(Sys.Date(),format="%Y-%m-%d"), "%Y"))
 ## Survey123 to upload format   
 ```{r}
 ## Transect is the MySQL Transect ID, repeats are when two teams completed one plot
-DoubleObs <- read.csv("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_RawData/2025/2025_Penstemon-harringtonii_RawDataS123/Penstemon_harringtonii_DemographicMonitoring_0.csv")
+DoubleObs <- read.csv(paste("Penstemon-harringtonii_RawData/",currentYr,"/",currentYr,"_Penstemon-harringtonii_RawDataS123/Penstemon_harringtonii_DemographicMonitoring_0.csv", sep = ""))
 DoubleObs <- DoubleObs %>%
   dplyr::group_by(Site, Transect) %>%
-  summarise(NumMissedByPrimary = sum(Number.Plants.Missed.By.Primary.Observer),
+  dplyr::summarise(NumMissedByPrimary = sum(Number.Plants.Missed.By.Primary.Observer),
             PrimaryObs = paste(Primary.Observer.s.Initials, collapse = ","),
             SecondObs = paste(Secondary.Observer, collapse = ",")) 
 
-plants <- read.csv("C:/Users/deprengm/Denver Botanic Gardens/Conservation - General/AllProjectsBySpecies/Penstemon-harringtonii/Penstemon-harringtonii_RawData/2025/2025_Penstemon-harringtonii_RawDataS123/plants_1.csv")
+plants <- read.csv(paste("Penstemon-harringtonii_RawData/",currentYr,"/",currentYr,"_Penstemon-harringtonii_RawDataS123/plants_1.csv",
+                         sep=""))
 
 peha2025 <- DoubleObs %>%
   left_join(plants, by = c("Transect" = "MySQL.Transect.ID")) %>%
-  dplyr::select(Site.y, Transect, Transect.y, X:X.Fr.Fl,NumMissedByPrimary, PrimaryObs, SecondObs)
+  dplyr::select(Site.x, Transect, Transect.y, X:X.Fr.Fl,NumMissedByPrimary, PrimaryObs, SecondObs)
 
 ### Need to remove the ones where primary and secondary match (me, I did some myself so no missed)
 peha2025 %>%
   filter(PrimaryObs != SecondObs) %>%
   group_by(Transect, NumMissedByPrimary) %>%
-  summarise(n = n())
+  dplyr::summarise(n = n())
 
+
+## ?????
 toUpload <- peha2025 %>%
   dplyr::select(Site.x, MySQL.Transect.ID, Transect, X..of.Rosettes, 
          X,Y, X..of.Rosettes, flowered..br....0.or.1.,
@@ -151,41 +155,17 @@ peha.c <- peha.climate
 names(peha.c) ##Check first, order and complete list
 names(peha.c) <- c("Date","Precip","Tmin","tmean","Tmax","tdewmean","vpdmin","vpdmax","Site","Year","Month")
 peha.c$Date <- as.Date(paste(peha.climate$Date,"01", sep="-")) # needs the day
+peha.c$Month <- as.numeric(peha.c$Month)
 
-ggplot(peha.c[peha.c$Year>2000,], aes(Date, Precip, colour = Site))+
-  stat_summary(fun = mean, geom="line")+
-  theme_bw()+
-  stat_smooth(method = "glm", se=FALSE)
-
-ggplot(peha.c, aes(Date, Tmin, colour = Site))+
-  stat_summary(fun = mean, geom="line")+
-  theme_bw()+
-  stat_smooth(method = "glm")
-
-ggplot(peha.c, aes(Date, Tmax, colour = Site))+
-  stat_summary(fun = mean, geom="line")+
-  theme_bw()+
-  stat_smooth(method = "glm")
-
-# vapor deficit
-ggplot(peha.c[peha.c$Year > 2004,], aes(Date, vpdmax, colour = Site))+
-  stat_summary(fun = mean, geom="line")+
-  theme_bw()+
-  stat_smooth(method = "glm", se=FALSE)
-
-ggplot(peha.c, aes(Date, vpdmax, colour = Site))+
-  stat_summary(fun = mean, geom="line")+
-  theme_bw()+
-  stat_smooth(method = "glm", se=FALSE)
-
-## annual
+## annual, previous 12 months
 peha.annual <- peha.c %>%
   mutate(Month = as.numeric(Month)) %>%
   mutate(Year = as.numeric(Year)) %>%
-  mutate(Prev12 = case_when(Month < 7 ~ (Year-1),
+  ## When Month > 7, then that goes to the next year
+  mutate(Prev12 = case_when(Month >= 7 ~ (Year+1),
                             TRUE ~ Year)) %>%
   group_by(Prev12, Site) %>%
-  summarise(Precip = sum(Precip),
+  dplyr::summarise(Precip = sum(Precip),
             tmin = min(Tmin),
             tminavg = mean(Tmin),
             tmax = max(Tmax),
@@ -196,17 +176,17 @@ peha.annual <- peha.c %>%
             vpdmaxmean = mean(vpdmax),
             vpdmax = max(vpdmax))
 # peha.annual <- aggregate(.~Year + Site, peha.c[,c(2:9)], function(x) mean(x, na.rm=TRUE))
-head(peha.annual)
+tail(peha.annual)
 
 peha.c %>%
   filter(Year == 2015) %>%
   group_by(Site) %>%
-  summarise(vpdmax = min(vpdmax))
+  dplyr::summarise(vpdmax = min(vpdmax))
 
 peha.c %>%
   filter(Year == 2015) %>%
   group_by(Site) %>%
-  summarise(vpdmaxmean = mean(vpdmax))
+  dplyr::summarise(vpdmaxmean = mean(vpdmax))
 
 peha.annual %>%
 ggplot( aes(Prev12, Precip, colour = Site))+
@@ -261,14 +241,6 @@ peha <- read.csv(paste(userpath,"peha",currentyr,".csv",sep=""))
 ```
 
 
-
-```{r, echo=FALSE}
-ggplot(peha, aes(Year, X.ofRosettes, colour=Site)) +
-  stat_summary(fun = sum, geom="line") +
-  theme_bw()
-```
-
-
 ##### Summary data    
 We want precipitation as the previous 12 months (July-June)
 ```{r}
@@ -287,7 +259,7 @@ peha %>%
 
 peha_sum <- peha %>%
   group_by(Site, Year, Transect) %>%
-  summarise(TotRos = sum(X.ofRosettes),
+  dplyr::summarise(TotRos = sum(X.ofRosettes),
             Fl = sum(Fl)/n(),
             Br = sum(Br)/n())
   
@@ -297,18 +269,22 @@ peha_sum <- peha %>%
 
 Add summary statistics to the peha table
 ```{r}
-# peha_sumSE <- summarySE(peha_sum, measurevar="TotRos", groupvars=c("Site","Year"))
-# peha_sumSEfl <- summarySE(peha_all, measurevar="Fl", groupvars=c("Site","Year"))
-# peha_sumSEbr <- summarySE(peha_all, measurevar="Br", groupvars=c("Site","Year"))
-# peha_sumSEprecip <- summarySE(peha.c, measurevar="Precip", groupvars=c("Site","Prev12"))
+
+peha_all <- peha %>%
+  group_by(Site, Year) %>%
+  dplyr::summarise(TotRos = sum(X.ofRosettes),
+                   PerRep = (sum(Fl)/n()),
+                   NumFlFr = sum(Fr_Fl),
+                   PerBr = (sum(Br)/n())) %>%
+  left_join(peha.annual, by = c("Year" = "Prev12", "Site" = "Site"))
+
 
 peha_table1 <- summarySE(peha_all, measurevar="TotRos", groupvars=c("Site"))
 
-annual.precip <- aggregate(Precip~Prev12+Site, data=peha.c[peha.c$Year>1895,], FUN = sum)
-avg.site <- aggregate(Precip~Site, FUN = mean, data = annual.precip[annual.precip$Prev12>1895,])
-
 # Table 1
 summarySE(peha_all, measurevar="TotRos", groupvars="Site")
+summarySE(peha.annual, measurevar = "Precip", groupvars = "Site")
+            
 ```
 
 Add "a)" to each plot     
@@ -320,7 +296,7 @@ Figure 1a) average rosettes per transect
 
 Fig2a <- peha_sum %>%
   group_by(Site, Year) %>%
-  summarise(meanRos = mean(TotRos),
+  dplyr::summarise(meanRos = mean(TotRos),
             sdRos = sd(TotRos),
             SERos = sqrt(var(TotRos)/n()),
             CIlwrRos = meanRos - (1.96 * SERos),
@@ -332,7 +308,7 @@ Fig2a <- peha_sum %>%
   theme_bw() +
   ylab("Average rosettes per transect") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,1), legend.position=c(1,1)) +
+        legend.justification=c(1,1), legend.position = c(1,1)) +
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
 
@@ -341,7 +317,7 @@ Fig2a <- peha_sum %>%
 # Figure 1b) percent of individuals that are flowering or fruiting
 Fig2b <- peha_sum %>%
   group_by(Site, Year) %>%
-  summarise(mean = mean(Fl),
+  dplyr::summarise(mean = mean(Fl),
             sd = sd(Fl),
             SE = sqrt(var(Fl)/n()),
             CIlwr = mean - (1.96 * SE),
@@ -361,7 +337,7 @@ Fig2b <- peha_sum %>%
 
 Fig2c <- peha_sum %>%
   group_by(Site, Year) %>%
-  summarise(mean = mean(Br),
+  dplyr::summarise(mean = mean(Br),
             sd = sd(Br),
             SE = sqrt(var(Br)/n()),
             CIlwr = mean - (1.96 * SE),
@@ -380,9 +356,9 @@ Fig2c <- peha_sum %>%
 # Precipitation not most important
 # Figure 1d) annual precipitation (mm) from the previous 12 months (July-June).
 
-Fig2d <- peha_c %>%
+Fig2d <- peha %>%# peha_c %>%
   group_by(Site, Year) %>%
-  summarise(mean = mean(Br),
+  dplyr::summarise(mean = mean(Br),
             sd = sd(Br),
             SE = sqrt(var(Br)/n()),
             CIlwr = mean - (1.96 * SE),
@@ -397,21 +373,6 @@ Fig2d <- peha_c %>%
         legend.justification=c(1,0), legend.position=c(1,0)) +
   ggtitle("c)") +
   theme(plot.title=element_text(hjust=0))
-  
-  
-  ggplot(subset(annual.precip, Prev12 > 1994), aes(Prev12, Precip, colour=Site)) +
-  geom_point(position=position_dodge(0.2), shape=21, fill="white") +
-  stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
-  theme_bw() +
-  ylab("Total 12 month precipition (mm)") +
-  theme(legend.background=element_blank(),
-        legend.justification=c(0,0), legend.position=c(0,0))  +
-  xlab("Preceeding year (July-June)") +
-  geom_hline(yintercept = avg.site$Precip[1], col = "pink") +
-  geom_hline(yintercept = avg.site$Precip[2], col = "lightblue") +
-  ggtitle("d)") +
-  theme(plot.title=element_text(hjust=0))
-
 
 fig2e_vpdmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, vpdmax, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
@@ -426,20 +387,21 @@ fig2e_vpdmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, vpdmax, colour=S
   ggtitle("e)") +
   theme(plot.title=element_text(hjust=0))
 
-fig2g_tmin <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, Tmin, colour=Site)) +
+fig2g_tmin <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, tmin, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
   ylab("Average minimum temperature") +
   theme(legend.background=element_blank(),
-        legend.justification=c(1,1), legend.position=c(1,0.5))  +
+        legend.justification=c(1,1), legend.position = c(1,1)) +
+        # legend.justification=c(0,1), legend.position=c(0,1))  +
   xlab("Preceeding year (July-June)") +
   geom_hline(yintercept = mean(peha_all$Tmin[peha_all$Site=="Above Eagle"]), col = "pink") +
   geom_hline(yintercept = mean(peha_all$Tmin[peha_all$Site=="Dry Lake"]), col = "lightblue") +
   ggtitle("f)") +
   theme(plot.title=element_text(hjust=0))
 
-fig2d_tmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, Tmax, colour=Site)) +
+fig2d_tmax <- ggplot(peha_all[peha_all$Year>1994,], aes(Year, tmax, colour=Site)) +
   geom_point(position=position_dodge(0.2), shape=21, fill="white") +
   stat_summary(fun.y = function(x) mean(x, na.rm = TRUE), geom="line") +
   theme_bw() +
@@ -459,7 +421,7 @@ ggsave(paste(userpath,currentyr,"_Penstemon-harringtonii_Fig2.jpg", sep=""),
  
        Fig2a + Fig2b + Fig2c + Fig2d + fig2e_vpdmax + fig2g_tmin + fig2d_tmax + plot_layout(ncol = 2),
        
-     units = "mm", dpi = 300, height = 400, width = 300)   
+     units = "mm", dpi = 300, height = 350, width = 300)   
 
 
 ```
@@ -471,19 +433,25 @@ winter- Oct:Dec (10-12)
 spring- Jan:March (1-3)    
 summer- April:June (4-6)     
 ```{r}
-peha.c$season <- "fall" 
-peha.c[peha.c$Month>9 & peha.c$Month<13,"season"] <- "winter" 
-peha.c[peha.c$Month>0 & peha.c$Month<4,"season"] <- "spring" 
-peha.c[peha.c$Month>3 & peha.c$Month<7,"season"] <- "summer" 
+
+peha.seasonal <- peha.c %>%
+  mutate(Year = as.numeric(Year)) %>%
+  mutate(Prev12 = case_when(Month >=7 ~ (Year + 1),
+                            TRUE ~ Year)) %>%
+  mutate(season = case_when((Month > 9 & Month < 13) ~ "winter",
+                            (Month > 0 & Month < 4) ~ "spring",
+                            (Month > 3 & Month < 7) ~ "summer",
+                            TRUE ~ "fall"))
 
 # I added this earlier, don't really need again now but will make it cleaner  
 # peha.c has all PRISM climate data per month, designating the year for the previous 12 months (July-June), and monthly data
-peha.c.summary <- aggregate(peha.c[,c("Tmax","Tmin","vpdmax","vpdmin")], 
-                            peha.c[,c("Site","Prev12","season")], 
-                            FUN = function(x) mean(x, na.rm = TRUE))
-peha.c.summary.prec <- aggregate(Precip~Site+Prev12+season, data =  peha.c, FUN = sum)
-
-peha.c.sum <- data.frame(peha.c.summary, Precip = peha.c.summary.prec[,"Precip"])
+peha.c.summary <- peha.seasonal %>%
+  group_by(Site, Prev12, season) %>%
+  dplyr::summarise(totppt = sum(Precip),
+                   tmin.mean = mean(Tmin),
+                   tmax.mean = mean(Tmax),
+                   vpdmax.mean = mean(vpdmax),
+                   vpdmin.mean = mean(vpdmin),)
 
 # This has all same info except averaged over years (previous 12 months) instead of seasons and has demographic data
 peha_all
