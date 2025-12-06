@@ -233,6 +233,10 @@ ggplot(   aes(Prev12, vpdmax, colour = Site))+
 peha_summary <- read.csv(paste(userpath,"peha_",currentyr,"_summary.csv", sep=""))
 ## Number of rosettes counted in current year
 sum(peha_summary$Sumofrosettes[peha_summary$Year == currentyr])
+
+peha_summary <- peha_summary %>%
+  dplyr::select(Year:Sumofbrowsed)
+
 ```
 
 #PeHa>Reports>Raw Data
@@ -454,7 +458,8 @@ peha.c.summary <- peha.seasonal %>%
                    vpdmin.mean = mean(vpdmin),)
 
 # This has all same info except averaged over years (previous 12 months) instead of seasons and has demographic data
-peha_all
+peha_all_seasonal <- peha_all %>%
+  left_join(peha.c.summary, by = c("Year" = "Prev12", "Site" = "Site"))
 
 ```
 
@@ -465,11 +470,6 @@ this is seasonal averages (averaged over seasons over years)
 summarySE(annual.precip, measurevar="Precip", groupvars=c("Site"))
 ```
 
-
-Merge summary data with precipitation data
-```{r}
-peha.1 <- merge(peha_all, peha.c.sum, by.x=c("Site","Year"), by.y=c("Site","Prev12"))
-```
 
 
 CountPVA  
@@ -572,74 +572,36 @@ peha_FlYN <- peha_FlYN %>%
 #   ggtitle("a)") +
 #   theme(plot.title=element_text(hjust=0))
 
-# Rosettes is maxtemp
-Fig4a <- ggplot(peha_all, aes(Tmax, TotRos, colour = Site)) +
+# Rosettes is precipitation   
+## Year == Prev12 months prior to July
+Fig4a <-
+  peha %>%
+  group_by(Site, Year, Transect) %>%
+  dplyr::summarise(TotRos = sum(X.ofRosettes),
+                   PercRep = (sum(Fl)/n()),
+                   NumFlFr = sum(Fr_Fl),
+                   PerBr = (sum(Br)/n())) %>%
+  left_join(peha.annual, c("Site" = "Site", "Year" = "Prev12")) %>%
+  
+ggplot(    aes(Precip, TotRos, colour = Site)) +
   geom_point() +
   geom_smooth(method ="glm") +
   scale_color_manual(values = c("black","red")) +
   theme_bw() +
   xlab("") +
   ylab(expression(paste("Average rosettes per 60m"^2))) +
-  xlab("Maximum Temperature (degree C)")+
+  # xlab("Maximum Temperature (degree C)")+
+  xlab("Annual precipitation (mm)") +
   theme(legend.justification=c(1,1), legend.position=c(1,1),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("a)") +
   theme(plot.title=element_text(hjust=0))
 
-# Fig4a_2 <- ggplot(peha_all, aes(vpdmax, TotRos, colour = Site)) +
-#   geom_point() +
-#   geom_smooth(method ="lm") +
-#   scale_color_manual(values = c("black","red")) +
-#   theme_bw() +
-#   xlab("") +
-#   ylab(expression(paste("Average rosettes per 60m"^2))) +
-#   xlab("Maximum vapor pressure deficit")+
-#   theme(legend.justification=c(0,1), legend.position=c(0,1),
-#         legend.background = element_rect(fill=alpha('white', 0.1)))+
-#   ggtitle("b)") +
-#   theme(plot.title=element_text(hjust=0))
-# 
-# Fig4b1 <- ggplot(peha_all, aes(x, Fl)) +
-#   geom_point() +
-#   geom_smooth(method ="lm") +
-#   scale_color_manual(values = c("black","red")) +
-#   theme_bw() +
-#   xlab("") +
-#   ylab("% reproductive individuals") +
-#   xlab("Precipitation")+
-#   theme(legend.justification=c(0,1), legend.position=c(0,1),
-#         legend.background = element_rect(fill=alpha('white', 0.1)))+
-#   ggtitle("b)") +
-#   theme(plot.title=element_text(hjust=0))
-# 
-# Fig4b2 <- ggplot(peha_all, aes(Tmin, Fl, colour = Site)) +
-#   geom_point() +
-#   geom_smooth(method ="lm") +
-#   scale_color_manual(values = c("black","red")) +
-#   theme_bw() +
-#   xlab("") +
-#   ylab("% reproductive individuals") +
-#   xlab("Minimum Temperature")+
-#   theme(legend.justification=c(0,1), legend.position=c(0,1),
-#         legend.background = element_rect(fill=alpha('white', 0.1)))+
-#   # ggtitle("c)") +
-#   theme(plot.title=element_text(hjust=0))
-# 
-# 
-# Fig4b3 <- ggplot(peha_all, aes(Tmax, Fl, colour = Site)) +
-#   geom_point() +
-#   geom_smooth(method ="lm") +
-#   scale_color_manual(values = c("black","red")) +
-#   theme_bw() +
-#   xlab("") +
-#   ylab("% reproductive individuals") +
-#   xlab("Maximum Temperature")+
-#   theme(legend.justification=c(0,1), legend.position=c(0,1),
-#         legend.background = element_rect(fill=alpha('white', 0.1)))+
-#   # ggtitle("c)") +
-#   theme(plot.title=element_text(hjust=0))
-
-Fig4b <- ggplot(peha_FlYN, aes(Tmax, Fl, color = Site))+
+Fig4b <- 
+  peha %>%
+  left_join(peha.annual, c("Site" = "Site", "Year" = "Prev12")) %>%
+  
+ggplot(    aes(tmax, Fl, color = Site))+
   geom_point(pch = "|")+
   geom_smooth(method = "glm", 
               method.args = list(family = "binomial"), 
@@ -647,14 +609,20 @@ Fig4b <- ggplot(peha_FlYN, aes(Tmax, Fl, color = Site))+
   theme_bw()+
   scale_color_manual(values = c("black","red")) +
   ylab("Probability of reproduction") +
-  xlab("Maximum Temperature (degree C)")+
+  # xlab("Maximum Temperature (degree C)")+
+  xlab("Annual precipitation (mm)") +
   theme(legend.justification=c(1,0.90), legend.position=c(1,0.90),
         legend.background = element_rect(fill=alpha('white', 0.1)))+
   ggtitle("b)") +
   theme(plot.title=element_text(hjust=0))
 
 
-Fig4c <- ggplot(peha_FlYN, aes(vpdmax, Br, color = Site))+ 
+Fig4c <- 
+  peha %>%
+  left_join(peha.annual, c("Site" = "Site", "Year" = "Prev12")) %>%
+  mutate(Br = case_when(Br > 0 ~ 1,
+                        TRUE ~ 0)) %>%
+ggplot(   aes(vpdmax, Br, color = Site))+ 
   geom_point(pch = "|")+
   geom_smooth(method = "glm", 
               method.args = list(family = "binomial"), 
@@ -1058,6 +1026,11 @@ numfruit <- lapply(split(peha, peha$Site), function(site){
 
 require(AICcmodavg)
 
+peha_all <- peha_all %>%
+  mutate(scaletmin = c(scale(tmin)),
+         scaletmax = c(scale(tmax)),
+         scaleppt = c(scale(Precip)),
+         scalevpdmax = c(scale(vpdmax)))
 
 lm1 <- glm(TotRos ~ Site*scaletmin, family = poisson, peha_all)
 lm2 <- glm(TotRos ~ Site*scaletmax, family = poisson,peha_all)
@@ -1080,6 +1053,7 @@ for(i in 2:length(lm.list)){
 
 levels(peha_all$Site)
 summary(lm2) # ~ Site * tmax
+summary(lm4)
 exp(lm2$coefficients)
 sum(lm2$coefficients[c(3,4)])
 
@@ -1099,6 +1073,14 @@ Zero/one-inflated binomial or beta regression with lots of zeros and ones (brms,
 Use binomial but merge data to peha (not summarized by plot peha_all)
 
 ```{r}
+
+peha_FlYN <- peha %>%
+  left_join(peha.annual, by = c("Year" = "Prev12", "Site" = "Site")) %>%
+  mutate(scaletmin = c(scale(tmin)),
+         scaletmax = c(scale(tmax)),
+         scaleppt = c(scale(Precip)),
+         scalevpdmax = c(scale(vpdmax)))
+
 
 lm1 <- glm(Fl ~ Site*scaletmin, family = binomial(link = "logit"), peha_FlYN)  #   #2
 lm2 <- glm(Fl ~ Site*scaletmax, family = binomial(link = "logit"),peha_FlYN) #     #3
@@ -1120,12 +1102,15 @@ for(i in 2:length(lm.list)){
   print(exp(0.5*lm.results$Delta_AICc[i]))
 }
 
-summary(lm2)
+summary(lm4)
 sum(lm2$coefficients[c(3,4)])
 ```
 
 ```{r}
 
+peha_FlYN <- peha_FlYN %>%
+  mutate(Br = case_when(Br > 0 ~ 1,
+                        TRUE ~ 0))
 
 lm1 <- glm(Br ~ Site*scaletmin, family = binomial(link = "logit"),peha_FlYN)
 lm2 <- glm(Br ~ Site*scaletmax,family = binomial(link = "logit"), peha_FlYN)
